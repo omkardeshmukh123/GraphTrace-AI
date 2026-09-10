@@ -1,0 +1,134 @@
+{
+  "$defs": {
+    "JsonValue": {},
+    "Node": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,159}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "PROJECT",
+            "FILE",
+            "PACKAGE",
+            "MODULE",
+            "CLASS",
+            "INTERFACE",
+            "METHOD",
+            "FUNCTION",
+            "REQUIREMENT",
+            "DOCUMENT",
+            "TECHNOLOGY"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "properties": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Properties"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "name"
+      ],
+      "title": "Node",
+      "type": "object"
+    },
+    "Relationship": {
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,159}$",
+          "title": "Source",
+          "type": "string"
+        },
+        "target": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,159}$",
+          "title": "Target",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "CONTAINS",
+            "IMPORTS",
+            "CALLS",
+            "EXTENDS",
+            "IMPLEMENTS",
+            "DEPENDS_ON",
+            "IMPLEMENTED_BY",
+            "DOCUMENTED_BY",
+            "USES",
+            "PART_OF"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "properties": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Properties"
+        }
+      },
+      "required": [
+        "source",
+        "target",
+        "type"
+      ],
+      "title": "Relationship",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "project_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,159}$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "nodes": {
+      "items": {
+        "$ref": "#/$defs/Node"
+      },
+      "maxItems": 5000,
+      "minItems": 1,
+      "title": "Nodes",
+      "type": "array"
+    },
+    "relationships": {
+      "items": {
+        "$ref": "#/$defs/Relationship"
+      },
+      "maxItems": 20000,
+      "title": "Relationships",
+      "type": "array"
+    }
+  },
+  "required": [
+    "project_id",
+    "nodes"
+  ],
+  "title": "ArtifactGraph",
+  "type": "object"
+}
