@@ -99,8 +99,8 @@ def parse_project(
         if entity.type == EntityType.REPOSITORY:
             m3_id = project_id
         else:
-            # Build a stable reference string for uuid5
-            rel_path = entity.properties.get("relative_path", entity.name)
+            # Build a stable reference string for uuid5 (normalized with forward slashes)
+            rel_path = str(entity.properties.get("relative_path") or entity.properties.get("file_path") or entity.name).replace("\\", "/")
             if entity.type in (EntityType.CLASS, EntityType.FUNCTION):
                 parent_class = entity.properties.get("parent_class", "")
                 if parent_class:
@@ -115,8 +115,9 @@ def parse_project(
 
         # Build M3-compatible properties
         props = {}
-        if entity.properties.get("relative_path"):
-            props["path"] = entity.properties["relative_path"]
+        raw_path = entity.properties.get("relative_path") or entity.properties.get("file_path")
+        if raw_path:
+            props["path"] = str(raw_path).replace("\\", "/")
         if entity.properties.get("language"):
             props["language"] = entity.properties["language"]
         if entity.properties.get("description"):
@@ -129,14 +130,14 @@ def parse_project(
             props["parent_class"] = entity.properties["parent_class"]
         # reference field used by manual mappings (e.g. auth.py::AuthService.login)
         if entity.type in (EntityType.CLASS, EntityType.FUNCTION):
-            rel_path = entity.properties.get("relative_path", "")
+            norm_rel = str(entity.properties.get("relative_path") or entity.properties.get("file_path") or "").replace("\\", "/")
             parent_class = entity.properties.get("parent_class", "")
             if parent_class:
-                props["reference"] = f"{rel_path}::{parent_class}.{entity.name}"
+                props["reference"] = f"{norm_rel}::{parent_class}.{entity.name}"
             else:
-                props["reference"] = f"{rel_path}::{entity.name}"
+                props["reference"] = f"{norm_rel}::{entity.name}"
         elif entity.type == EntityType.FILE:
-            props["reference"] = entity.properties.get("relative_path", entity.name)
+            props["reference"] = str(entity.properties.get("relative_path") or entity.properties.get("file_path") or entity.name).replace("\\", "/")
         if entity.type == EntityType.REPOSITORY:
             props["source"] = "repository"
 

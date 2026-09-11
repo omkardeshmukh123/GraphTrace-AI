@@ -18,7 +18,13 @@ logger = logging.getLogger(__name__)
 
 def apply_mappings(graph: ArtifactGraph, mappings: list[ManualMapping]) -> ArtifactGraph:
     def resolve(reference: str):
-        matches = [node for node in graph.nodes if node.id == reference or node.properties.get("reference") == reference]
+        ref_norm = reference.replace("\\", "/")
+        matches = [
+            node for node in graph.nodes
+            if node.id == reference
+            or node.properties.get("reference") == reference
+            or (isinstance(node.properties.get("reference"), str) and node.properties["reference"].replace("\\", "/") == ref_norm)
+        ]
         if len(matches) != 1:
             raise AppError(422, "mapping_unresolved", f"Mapping reference must identify exactly one node: {reference}")
         return matches[0]

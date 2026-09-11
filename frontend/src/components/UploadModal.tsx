@@ -78,8 +78,55 @@ export default function UploadModal({ onClose, onSuccess }: Props) {
           </button>
         </div>
 
+        {/* Quick Load Sample Banner */}
+        <div style={{
+          margin: '16px 28px 0',
+          padding: '12px 16px',
+          background: 'rgba(59, 130, 246, 0.08)',
+          border: '1px solid rgba(59, 130, 246, 0.25)',
+          borderRadius: 8,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+        }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#93c5fd', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span>🚀</span> Explore CloudScale E-Commerce Sample
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
+              87 nodes, 8 requirements, controllers, services, repositories &amp; call paths.
+            </div>
+          </div>
+          <button
+            type="button"
+            className="btn btn-primary"
+            style={{ fontSize: 12, padding: '6px 14px', whiteSpace: 'nowrap' }}
+            disabled={loading}
+            onClick={async () => {
+              setLoading(true);
+              setError('');
+              try {
+                const projects = await api.listProjects();
+                const found = projects.find((p) => p.id === 'ecommerce-platform');
+                if (found) {
+                  onSuccess(found);
+                } else {
+                  setError('Sample platform not found in current store.');
+                }
+              } catch (e: unknown) {
+                setError(e instanceof Error ? e.message : 'Failed to switch to sample project');
+              } finally {
+                setLoading(false);
+              }
+            }}
+          >
+            Switch to Sample
+          </button>
+        </div>
+
         {/* Tab Selectors */}
-        <div style={{ display: 'flex', borderBottom: '1px solid var(--border-subtle)', padding: '0 28px', background: 'rgba(0,0,0,0.15)' }}>
+        <div style={{ display: 'flex', borderBottom: '1px solid var(--border-subtle)', padding: '0 28px', background: 'rgba(0,0,0,0.15)', marginTop: 14 }}>
           <button
             style={{
               padding: '12px 18px',

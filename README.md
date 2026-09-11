@@ -101,7 +101,21 @@ REST API → M4 Frontend (Phase 1+)
 
 ---
 
-## Setup
+## Quick Start (Windows One-Click)
+
+Launch or stop the entire platform (FastAPI backend + Vite frontend + seeded demo data) with a single command:
+
+```cmd
+:: Start all services and launch browser:
+launch.bat   (or start.bat)
+
+:: Stop all running services and free ports 8000 & 5173:
+stop.bat
+```
+
+---
+
+## Manual Setup
 
 ### 1. Install Dependencies
 
@@ -110,23 +124,31 @@ cd backend
 python -m venv venv
 venv\Scripts\activate          # Windows
 pip install -r requirements.txt
+
+cd ../frontend
+npm install
 ```
 
 ### 2. Configure Environment
 
 ```bash
 copy .env.example .env
-# Edit .env and fill in NEO4J credentials from console.neo4j.io
+# GRAPHTRACE_STORE=local (default for local storage)
+# Fill in NEO4J credentials if using Neo4j AuraDB
 ```
 
-### 3. Start the Server (M3 — Primary)
+### 3. Start Servers Manually
 
 ```bash
-# From project root:
+# Terminal 1 — Backend (FastAPI):
 uvicorn backend.app.main:app --reload --port 8000
+
+# Terminal 2 — Frontend (Vite):
+cd frontend && npm run dev
 ```
 
-Visit **http://localhost:8000/docs** for the interactive API.
+- **Web Application**: [http://localhost:5173](http://localhost:5173)
+- **Interactive API Docs**: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 
 ---
 

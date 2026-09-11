@@ -1,0 +1,34 @@
+[
+  {
+    "requirement": "REQ-001",
+    "implementation": "src/auth_service.py::AuthService.login"
+  },
+  {
+    "requirement": "REQ-002",
+    "implementation": "src/order_service.py::OrderService.create_order"
+  },
+  {
+    "requirement": "REQ-003",
+    "implementation": "src/payment_gateway.py::PaymentGateway.charge"
+  },
+  {
+    "requirement": "REQ-004",
+    "implementation": "src/inventory_service.py::InventoryService.reserve_stock"
+  },
+  {
+    "requirement": "REQ-005",
+    "implementation": "src/notification_service.py::NotificationDispatcher.send_order_confirmation"
+  },
+  {
+    "requirement": "REQ-006",
+    "implementation": "src/audit_logger.py::AuditLogger.log_event"
+  },
+  {
+    "requirement": "REQ-007",
+    "implementation": "frontend/payment_service.js::CartManager.addItem"
+  },
+  {
+    "requirement": "REQ-008",
+    "implementation": "src/api_gateway.py::APIGateway.route_request"
+  }
+]

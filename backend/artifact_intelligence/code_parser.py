@@ -266,9 +266,19 @@ class CodeParser:
         classes = [m.group(1) for m in patterns.class_pattern.finditer(content)]
         result.classes = classes
 
+        CONTROL_FLOW_KEYWORDS = {
+            "if", "for", "while", "switch", "catch", "with", "elif", "else", "try", "finally",
+        }
+
         # ── Extract top-level functions (not indented / not methods) ───────
-        all_functions = [m.group(1) for m in patterns.function_pattern.finditer(content)]
-        all_methods = [m.group(1) for m in patterns.method_pattern.finditer(content)]
+        all_functions = [
+            m.group(1) for m in patterns.function_pattern.finditer(content)
+            if m.group(1) not in CONTROL_FLOW_KEYWORDS
+        ]
+        all_methods = [
+            m.group(1) for m in patterns.method_pattern.finditer(content)
+            if m.group(1) not in CONTROL_FLOW_KEYWORDS
+        ]
         method_set = set(all_methods)
         result.top_functions = [f for f in all_functions if f not in method_set]
 
@@ -277,7 +287,7 @@ class CodeParser:
         # before that method appears in the file. Good enough for typical files.
         if classes and all_methods:
             result.methods_by_class = self._assign_methods_to_classes(
-                content, classes, patterns
+                content, classes, patterns, CONTROL_FLOW_KEYWORDS
             )
         return result
 
@@ -286,11 +296,13 @@ class CodeParser:
         content: str,
         classes: list[str],
         patterns: LangPatterns,
+        ignored_names: set[str] | None = None,
     ) -> dict[str, list[str]]:
         """
         Heuristic: find position of each class definition and each method,
         then assign each method to the class that precedes it most closely.
         """
+        ignored = ignored_names or set()
         # Map class name → character position of its definition
         class_positions: list[tuple[int, str]] = []
         for m in patterns.class_pattern.finditer(content):
@@ -301,6 +313,8 @@ class CodeParser:
 
         for m in patterns.method_pattern.finditer(content):
             method_name = m.group(1)
+            if method_name in ignored:
+                continue
             method_pos = m.start()
 
             # Find the class with the largest start position still before method_pos
@@ -312,6 +326,7 @@ class CodeParser:
                     break
 
             if current_class and current_class in methods_by_class:
-                methods_by_class[current_class].append(method_name)
+                if method_name not in methods_by_class[current_class]:
+                    methods_by_class[current_class].append(method_name)
 
         return methods_by_class

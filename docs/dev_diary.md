@@ -382,8 +382,67 @@ _Scope_: End-to-end integration testing, documentation consolidation, and backgr
 
 #### 3. Live Server Launch
 - Configured local environment `.env` with `GRAPHTRACE_STORE=local` and `GRAPHTRACE_PARSER=backend.app.parsers.pipeline:parse_project`.
-- Started **FastAPI backend** on `http://127.0.0.1:8000` (PID 20564).
+- Started **FastAPI backend** on `http://127.0.0.1:8000`.
 - Started **Vite dev server** on `http://localhost:5173`.
-- Verified Vite proxy: `GET http://localhost:5173/api/health` &rarr; `200 OK`.
+- Verified Vite proxy: `GET http://localhost:5173/api/health` → `200 OK`.
 - Seeded initial `Authentication demo` project for immediate exploration.
 
+---
+
+## 📅 Session 5 — Enterprise Sample Project & Knowledge Graph Enrichment
+_Date_: 2026-09-12  
+_Scope_: Enriching `sample_project/` architecture and demo knowledge graph fixtures to showcase deep graph visualization, multi-cluster dependencies, and comprehensive requirement traceability.
+
+### 🎯 Goals
+- Expand `sample_project/` from a basic stub into a production-grade multi-tier e-commerce codebase.
+- Provide a rich Software Requirements Specification (`requirements.md`) with 8 formal requirements and explicit mappings (`mappings.json`).
+- Enrich knowledge graph demo fixtures (`scripts/make_demo.py`) with an 87-node, 142-relationship enterprise graph (`ecommerce-platform`).
+- Enable seamless 1-click switching and quick-load actions in the frontend UI.
+- Maintain 100% backward compatibility with all existing backend unit tests.
+
+### 🛠️ Work Done
+
+#### 1. Enterprise E-Commerce Sample Codebase (`sample_project/`)
+- Added real backend microservices and components in `sample_project/src/`:
+  - `controllers.py`: REST API handlers for `AuthController`, `OrderController`, `PaymentController`, `InventoryController`.
+  - `inventory_service.py`: `InventoryService` & `WarehouseClient` for stock checking, reservation, restocking.
+  - `payment_gateway.py`: `PaymentGateway`, `StripeClient`, `PayPalClient` with charge, refund, webhook verification.
+  - `notification_service.py`: `NotificationDispatcher`, `EmailClient`, `SMSNotifier` for multi-channel alerts.
+  - `audit_logger.py`: Cryptographically signed `AuditLogger` and `SecurityAuditor`.
+  - `api_gateway.py`: `APIGateway` with sliding-window `RateLimiter` and JWT authorization.
+  - `product_repository.py`: Catalog and warehouse stock count persistence.
+- Added client-side frontend modules in `sample_project/frontend/`:
+  - `api_client.js`: HTTP client with authorization header injection.
+  - `checkout_flow.js`: Multi-step checkout coordinator and `OrderSummary` calculator.
+  - `auth_context.js`: Session token storage and user authentication provider.
+- Added comprehensive unit tests in `sample_project/tests/`:
+  - `test_auth.py`, `test_orders.py`, `test_inventory.py`.
+- Added SRS requirements specification and mapping contracts:
+  - `requirements.md`: 8 requirements (`REQ-001` through `REQ-008`).
+  - `mappings.json`: Requirement-to-code mapping contract for automated traceability.
+  - `architecture.md`: ASCII system architecture diagram and component interaction flows.
+  - `README.md`: Fully updated architecture, modules, technologies, and setup guide.
+
+#### 2. Parser & Normalization Enhancements
+- **Control Flow Keyword Filtering**: Updated `backend/artifact_intelligence/code_parser.py` to ignore control flow constructs (`if`, `for`, `while`, `switch`, `catch`, etc.) so they are not mistreated as class methods.
+- **Cross-Platform Path Normalization**: Updated `backend/app/analysis.py` and `backend/artifact_intelligence/pipeline.py` to normalize path slashes (`/`), allowing manual mappings to resolve seamlessly across Windows and POSIX environments.
+
+#### 3. Enterprise Knowledge Graph Generation (`scripts/make_demo.py`)
+- Maintained exact 12-node fixture in `demo_graph()` to preserve test isolation.
+- Added `sample_ecommerce_graph()` generating 87 nodes and 142 relationships:
+  - 8 `REQUIREMENT` nodes (100% mapped via `IMPLEMENTED_BY`).
+  - 3 `DOCUMENT` nodes (`README.md`, `architecture.md`, `requirements.md`).
+  - 17 `FILE` nodes, 24 `CLASS` nodes, 29 `METHOD` nodes, 2 `FUNCTION` nodes.
+  - Cross-tier call chains (`m-js-checkout` → `m-order-checkout` → `m-inv-reserve` → `m-prod-decrement`).
+  - Class dependency hierarchies (`OrderService` → `InventoryService`, `OrderService` → `PaymentGateway`).
+- Pre-seeded both `demo` and `ecommerce-platform` into `LocalGraphStore` under `.data/graphs/`.
+
+#### 4. Frontend UI Quick-Load
+- Enhanced `frontend/src/components/UploadModal.tsx` with a 1-click **"🚀 Explore CloudScale E-Commerce Sample"** action card to immediately load or switch to the rich sample platform.
+
+#### 5. Verification & Test Results
+- `pytest backend/tests -v`: **81 passed, 12 skipped, 0 failures** (100% pass rate).
+- `pytest backend/tests/test_m1_parsers.py -v`: **25/25 passed**.
+- `npm run build`: Compiled with **0 errors**.
+- `npm run lint`: **0 errors**.
+- End-to-end ZIP analysis test: Analyzed `sample_project.zip` producing **169 nodes and 176 relationships** with all 8 requirements mapped.
