@@ -13,7 +13,7 @@ No Neo4j required — uses in-memory validation only.
 from pathlib import Path
 
 import pytest
-from backend.app.parsers.pipeline import parse_project
+from backend.artifact_intelligence.pipeline import parse_project
 from backend.app.models import ArtifactGraph
 
 # The sample project we built for M1 testing

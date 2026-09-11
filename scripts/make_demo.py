@@ -17,79 +17,51 @@ from backend.app.models import ArtifactGraph, Node, Relationship
 
 def demo_graph() -> ArtifactGraph:
     """
-    Hand-authored ArtifactGraph for the sample e-commerce project.
+    Hand-authored ArtifactGraph fixture for API and adapter tests.
     Import via: POST /projects/import
     """
     nodes = [
-        Node(id="demo", type="PROJECT", name="E-Commerce Demo", properties={"source": "hand_authored"}),
-
-        # Files
-        Node(id="file-auth",       type="FILE", name="auth_service.py",   properties={"reference": "src/auth_service.py",   "path": "src/auth_service.py",   "language": "python"}),
-        Node(id="file-order",      type="FILE", name="order_service.py",  properties={"reference": "src/order_service.py",  "path": "src/order_service.py",  "language": "python"}),
-        Node(id="file-repo",       type="FILE", name="user_repository.py",properties={"reference": "src/user_repository.py","path": "src/user_repository.py","language": "python"}),
-        Node(id="file-payment",    type="FILE", name="payment_service.js",properties={"reference": "frontend/payment_service.js","path": "frontend/payment_service.js","language": "javascript"}),
-
-        # Classes
-        Node(id="class-auth",      type="CLASS", name="AuthService",      properties={"reference": "src/auth_service.py::AuthService",    "path": "src/auth_service.py"}),
-        Node(id="class-order",     type="CLASS", name="OrderService",     properties={"reference": "src/order_service.py::OrderService",   "path": "src/order_service.py"}),
-        Node(id="class-repo",      type="CLASS", name="UserRepository",   properties={"reference": "src/user_repository.py::UserRepository","path": "src/user_repository.py"}),
-        Node(id="class-payment",   type="CLASS", name="PaymentService",   properties={"reference": "frontend/payment_service.js::PaymentService","path": "frontend/payment_service.js"}),
-
-        # Methods
-        Node(id="fn-login",        type="FUNCTION", name="login",         properties={"reference": "src/auth_service.py::AuthService.login",        "path": "src/auth_service.py"}),
-        Node(id="fn-create-order", type="FUNCTION", name="create_order",  properties={"reference": "src/order_service.py::OrderService.create_order","path": "src/order_service.py"}),
-        Node(id="fn-find-user",    type="FUNCTION", name="find_by_email", properties={"reference": "src/user_repository.py::UserRepository.find_by_email","path": "src/user_repository.py"}),
-        Node(id="fn-process",      type="FUNCTION", name="processPayment",properties={"reference": "frontend/payment_service.js::PaymentService.processPayment","path": "frontend/payment_service.js"}),
-
-        # Requirements
-        Node(id="req-001", type="REQUIREMENT", name="User Authentication",
-             properties={"reference": "REQ-001", "description": "Users shall authenticate via email and password.", "category": "functional"}),
-        Node(id="req-002", type="REQUIREMENT", name="Order Creation",
-             properties={"reference": "REQ-002", "description": "Authenticated users shall create orders.", "category": "functional"}),
-
-        # Document
+        Node(id="demo", type="PROJECT", name="Authentication demo", properties={"source": "hand_authored_demo"}),
+        Node(id="file-controller", type="FILE", name="controller.py", properties={"reference": "controller.py"}),
+        Node(id="file-auth", type="FILE", name="auth.py", properties={"reference": "auth.py"}),
+        Node(id="file-repository", type="FILE", name="repository.py", properties={"reference": "repository.py"}),
+        Node(id="class-auth", type="CLASS", name="AuthService", properties={"reference": "auth.py::AuthService", "path": "auth.py", "line_start": 4}),
+        Node(id="class-repository", type="CLASS", name="UserRepository", properties={"reference": "repository.py::UserRepository", "path": "repository.py", "line_start": 1}),
+        Node(id="function-login", type="FUNCTION", name="login_user", properties={"reference": "controller.py::login_user", "path": "controller.py", "line_start": 5}),
+        Node(id="method-login", type="METHOD", name="AuthService.login", properties={"reference": "auth.py::AuthService.login", "path": "auth.py", "line_start": 8}),
+        Node(id="method-find", type="METHOD", name="UserRepository.find", properties={"reference": "repository.py::UserRepository.find", "path": "repository.py", "line_start": 2}),
+        Node(id="req-login", type="REQUIREMENT", name="REQ-001: User lookup", properties={"reference": "REQ-001", "category": "functional", "description": "Check whether a username exists through the login entry point.", "actor": "User"}),
+        Node(id="req-audit", type="REQUIREMENT", name="REQ-002: Audit history", properties={"reference": "REQ-002", "category": "functional", "description": "Record each login attempt.", "actor": "Administrator"}),
         Node(id="readme", type="DOCUMENT", name="README.md", properties={"path": "README.md"}),
     ]
 
     triples = [
-        # Project → contents
+        ("demo", "CONTAINS", "file-controller"),
         ("demo", "CONTAINS", "file-auth"),
-        ("demo", "CONTAINS", "file-order"),
-        ("demo", "CONTAINS", "file-repo"),
-        ("demo", "CONTAINS", "file-payment"),
-        ("demo", "CONTAINS", "req-001"),
-        ("demo", "CONTAINS", "req-002"),
-        ("demo", "DOCUMENTED_BY", "readme"),
-
-        # Files → classes
-        ("file-auth",    "CONTAINS", "class-auth"),
-        ("file-order",   "CONTAINS", "class-order"),
-        ("file-repo",    "CONTAINS", "class-repo"),
-        ("file-payment", "CONTAINS", "class-payment"),
-
-        # Classes → methods
-        ("class-auth",    "CONTAINS", "fn-login"),
-        ("class-order",   "CONTAINS", "fn-create-order"),
-        ("class-repo",    "CONTAINS", "fn-find-user"),
-        ("class-payment", "CONTAINS", "fn-process"),
-
-        # Imports
-        ("file-auth",  "IMPORTS", "file-repo"),
-        ("file-order", "IMPORTS", "file-repo"),
-
-        # Calls
-        ("fn-login",        "CALLS", "fn-find-user"),
-        ("fn-create-order", "CALLS", "fn-find-user"),
-
-        # Traceability
-        ("req-001", "IMPLEMENTED_BY", "fn-login"),
-        ("req-002", "IMPLEMENTED_BY", "fn-create-order"),
+        ("demo", "CONTAINS", "file-repository"),
+        ("demo", "CONTAINS", "req-login"),
+        ("demo", "CONTAINS", "req-audit"),
+        ("demo", "CONTAINS", "readme"),
+        ("file-controller", "CONTAINS", "function-login"),
+        ("file-auth", "CONTAINS", "class-auth"),
+        ("file-repository", "CONTAINS", "class-repository"),
+        ("class-auth", "CONTAINS", "method-login"),
+        ("class-repository", "CONTAINS", "method-find"),
+        ("file-controller", "IMPORTS", "file-auth"),
+        ("file-controller", "IMPORTS", "file-repository"),
+        ("file-auth", "IMPORTS", "file-repository"),
+        ("function-login", "CALLS", "method-login"),
+        ("method-login", "CALLS", "method-find"),
+        ("class-auth", "DEPENDS_ON", "class-repository"),
+        ("req-login", "IMPLEMENTED_BY", "function-login"),
     ]
 
     edges = [
         Relationship(
-            source=src, target=tgt, type=kind,
-            properties={"provenance": "manual" if kind == "IMPLEMENTED_BY" else "hand_authored"},
+            source=src,
+            target=tgt,
+            type=kind,
+            properties={"provenance": "manual" if kind == "IMPLEMENTED_BY" else "hand_authored_demo"},
         )
         for src, kind, tgt in triples
     ]

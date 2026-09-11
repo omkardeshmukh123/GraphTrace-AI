@@ -62,7 +62,16 @@ def analyze(repository: UploadFile, requirements: UploadFile | None, mappings: U
             logger.exception("Parser failed for project %s", project_id)
             raise AppError(502, "parser_failed", "Parser failed or returned an invalid artifact graph. Check backend logs.") from exc
         graph = apply_mappings(graph, manual_mappings)
-        project = next(node for node in graph.nodes if node.id == project_id)
-        project.properties["source"] = "repository"
+        updated_nodes = [
+            node.model_copy(update={"properties": {**node.properties, "source": "repository"}})
+            if node.id == project_id else node
+            for node in graph.nodes
+        ]
+        graph = ArtifactGraph(
+            schema_version=graph.schema_version,
+            project_id=graph.project_id,
+            nodes=updated_nodes,
+            relationships=graph.relationships,
+        )
         store.save(graph)
     return summarize(graph)

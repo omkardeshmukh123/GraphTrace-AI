@@ -23,3 +23,8 @@ class Settings(BaseSettings):
     max_extracted_bytes: int = Field(default=100 * 1024 * 1024, gt=0)
     max_files: int = Field(default=2000, gt=0)
     max_sidecar_bytes: int = Field(default=1024 * 1024, gt=0)
+
+    @property
+    def neo4j_user(self) -> str:
+        """Alias for M2 compatibility where field is named neo4j_user."""
+        return self.neo4j_username

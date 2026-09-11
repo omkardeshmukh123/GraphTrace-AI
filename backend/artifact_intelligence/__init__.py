@@ -13,18 +13,19 @@
 ║    code_parser.py   — Extracts classes & functions (Python/JS/TS) ║
 ║    readme_parser.py — Extracts metadata, tech stack, sections     ║
 ║    models.py        — Internal Entity, Relationship, ArtifactData ║
+║    pipeline.py      — Converts ArtifactData → shared ArtifactGraph║
 ║                                                                   ║
 ║  Output contract:                                                 ║
-║    ArtifactData → consumed by backend/app/parsers/pipeline.py     ║
-║    which converts it into the shared ArtifactGraph (see shared/)  ║
+║    pipeline.parse_project() → ArtifactGraph consumed by M3        ║
 ║                                                                   ║
 ║  Integration:                                                     ║
-║    backend/app/parsers/pipeline.py implements the M3 parser       ║
-║    plugin interface using this module.                            ║
+║    pipeline.py implements the M3 parser plugin interface and is   ║
+║    loaded via GRAPHTRACE_PARSER env var by backend/app/config.py.                            ║
 ╚══════════════════════════════════════════════════════════════════╝
 """
 
 from .models import Entity, Relationship, ArtifactData
 from .analyzer import ArtifactAnalyzer
+from .pipeline import parse_project
 
-__all__ = ["Entity", "Relationship", "ArtifactData", "ArtifactAnalyzer"]
+__all__ = ["Entity", "Relationship", "ArtifactData", "ArtifactAnalyzer", "parse_project"]

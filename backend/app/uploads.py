@@ -91,7 +91,9 @@ def extract_repository(upload: UploadFile, workspace: Path, settings: Settings) 
                         output.write(chunk)
     except (BadZipFile, NotImplementedError, RuntimeError, EOFError, ValueError, FileExistsError, NotADirectoryError) as exc:
         raise AppError(422, "invalid_archive", "ZIP is invalid, contains conflicting paths, or uses unsupported compression.") from exc
-    if not any(root.rglob("*.py")):
-        raise AppError(422, "no_python_sources", "This prototype requires at least one Python source file.")
+    supported_exts = {".py", ".js", ".jsx", ".ts", ".tsx"}
+    has_source = any(f.suffix.lower() in supported_exts for f in root.rglob("*") if f.is_file())
+    if not has_source:
+        raise AppError(422, "no_source_files", "This prototype requires at least one supported source file (.py, .js, .ts, .jsx, .tsx).")
     children = list(root.iterdir())
     return children[0] if len(children) == 1 and children[0].is_dir() else root

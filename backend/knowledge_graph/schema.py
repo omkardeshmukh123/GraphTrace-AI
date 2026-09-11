@@ -1,11 +1,13 @@
 """
-M2 — Knowledge Graph Engine — Schema Setup
-============================================
-Creates Neo4j constraints and indexes.
+M2 — Knowledge Graph Engine — Schema Setup (Standalone Development)
+====================================================================
+Creates Neo4j constraints and indexes for M2 standalone server mode.
 
-Run once on application startup (idempotent — safe to re-run).
+Note: In the integrated M3 production server, backend/app/graph/builder.py
+manages the production schema using the unified (n:Entity) label with
+scoped (project_id, id) uniqueness.
 
-Phase 1 schema:
+Phase 1 standalone schema:
   Constraints:
     - Repository.id   UNIQUE
     - Folder.id       UNIQUE

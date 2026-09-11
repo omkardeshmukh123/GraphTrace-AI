@@ -246,30 +246,61 @@ M2 tests are written (`tests/test_m2_graph.py`, 12 test cases) but require:
 
 ---
 
-## 🏁 Session 1 Summary
-
-| Component | Files | Status |
-|-----------|-------|--------|
-| Scaffolding | .gitignore, requirements.txt, config.py, .env.example | ✅ |
-| M1 — ZIP Handler | zip_handler.py | ✅ |
-| M1 — README Parser | readme_parser.py | ✅ |
-| M1 — Code Parser | code_parser.py | ✅ |
-| M1 — Orchestrator | analyzer.py | ✅ |
-| M1 — Models | models.py | ✅ |
-| M2 — Connection | connection.py | ✅ |
-| M2 — Models | models.py | ✅ |
-| M2 — Schema | schema.py | ✅ |
-| M2 — Resolver | resolver.py | ✅ |
-| M2 — Builder | builder.py | ✅ |
-| M2 — Queries | queries.py | ✅ |
-| API — Projects | api/projects.py | ✅ |
-| API — Graph | api/graph.py | ✅ |
-| FastAPI App | main.py | ✅ |
-| M1 Tests | test_m1_parsers.py | ✅ **25/25** |
-| M2 Tests | test_m2_graph.py | 🟡 Awaiting Neo4j |
-| Sample Project | sample_project/ | ✅ |
-| README | README.md | ✅ |
-
-**Total: 19 files created, 25 tests passing**
+## 📅 Session 2 — M3 Code Audit & Integration Fixes
+_Date_: 2026-09-11  
+_Scope_: Full audit and resolution of all bugs, typos, logic overlaps, and test failures across M1, M2, and M3 modules.
 
 ---
+
+### 🔍 Identified Issues & Root Cause Analysis
+
+1. **BUG-001 | Pydantic Model Mutation Crash (`backend/app/analysis.py` L65)**:
+   - *Problem*: Attempting to mutate `project.properties["source"] = "repository"` on a Pydantic v2 model with `extra="forbid"` causes runtime crashes/type violations.
+   - *Fix*: Replaced in-place mutation with immutable `node.model_copy(update={"properties": ...})` and ensured safe construction in `pipeline.py`.
+
+2. **BUG-002 & MISSING-001 | Hardcoded Python-Only Restriction (`backend/app/uploads.py` L94)**:
+   - *Problem*: `if not any(root.rglob("*.py")):` rejected repositories containing only JavaScript/TypeScript files (e.g. `sample_project/frontend/payment_service.js`).
+   - *Fix*: Broadened source file detection to `{".py", ".js", ".jsx", ".ts", ".tsx"}` so frontend and multi-language repositories are accepted.
+
+3. **BUG-003 & BUG-004 | Filesystem Link & Overflow Checks (`backend/app/graph/store.py` L69, L136)**:
+   - *Problem*: `os.link` can fail across drive boundaries or restricted Windows environments without admin/developer mode privileges.
+   - *Fix*: Added safe fallback in `LocalGraphStore.save` to `os.replace` if `os.link` encounters permission/cross-volume errors while strictly preserving 409 duplicate checks. Clarified Cypher `LIMIT 5001/20001` overflow boundary logic.
+
+4. **MISSING-002 | Test Fixture Desynchronization (`scripts/make_demo.py` vs `backend/tests/test_api.py`)**:
+   - *Problem*: Commit `ac10a24` altered `demo_graph()` node IDs and source properties to match `sample_project/`, but `test_api.py` was authored specifically to test graph traversals, shortest paths, and cycles using `controller.py`, `auth.py`, `login_user`, `AuthService.login`, `UserRepository.find`, `req-login`, and `req-audit`. This broke 4 API tests.
+   - *Fix*: Restored the test fixture graph in `scripts/make_demo.py` while keeping automated ZIP generation of `sample_project/`. Regenerated `.data/demo_graph.json` and `.data/sample_project.zip`.
+
+5. **OVERLAP-002 & TYPO-001 | Configuration Field Naming Mismatch (`config.py` vs `app/config.py`)**:
+   - *Problem*: M2 standalone used `neo4j_user` while M3 used `neo4j_username`. Furthermore, `config.py` required `NEO4J_URI` and `NEO4J_PASSWORD` at module import time, crashing pytest test collection when running offline without live Neo4j.
+   - *Fix*: Provided default values in `backend/config.py`, added bidirectional `@property` aliases (`neo4j_username` in M2 config, `neo4j_user` in M3 config), and added `d.verify_connectivity()` to `test_m2_graph.py` driver fixture so live Neo4j tests skip gracefully when offline.
+
+6. **OVERLAP-001 | Neo4j Schema Documentation Clarification (`knowledge_graph/schema.py`)**:
+   - *Problem*: Standalone schema and production bridge schema used different uniqueness strategies.
+   - *Fix*: Documented architectural role: `knowledge_graph/schema.py` is for standalone prototype development; `backend/app/graph/builder.py` manages production multi-project schema with `(n:Entity)` and `(project_id, id)` uniqueness.
+
+7. **TYPO-002, TYPO-003, TYPO-004 | Variable Shadowing & Stale Comments**:
+   - *Fix*: Cleaned up variable scoping in `backend/app/graph/builder.py`, updated stale comments in `backend/knowledge_graph/queries.py`.
+
+---
+
+### 🧪 Verification & Test Results
+
+```
+collected 93 items
+
+tests\test_api.py .................................                      [ 35%]
+tests\test_m1_parsers.py .........................                       [ 62%]
+tests\test_m2_graph.py ssssssssssss                                      [ 75%]
+tests\test_neo4j_adapter.py ...                                          [ 78%]
+tests\test_parser_plugin.py ....................                         [100%]
+
+================== 81 passed, 12 skipped, 1 warning in 5.90s ==================
+```
+
+- **33/33** API integration tests passed
+- **25/25** M1 parser unit tests passed
+- **20/20** M1 → M3 parser plugin contract tests passed
+- **3/3** Neo4j store adapter contract tests passed
+- **12/12** M2 live database tests gracefully skipped when offline
+- **Total**: 81 passed, 0 failures!
+

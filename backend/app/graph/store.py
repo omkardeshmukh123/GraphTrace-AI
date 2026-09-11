@@ -66,7 +66,15 @@ class LocalGraphStore:
                 raise
         try:
             # An atomic link prevents both partial reads and accidental overwrites.
-            os.link(temporary, target)
+            # temporary and target are both created inside self.directory on the same filesystem.
+            try:
+                os.link(temporary, target)
+            except (OSError, NotImplementedError) as err:
+                if isinstance(err, FileExistsError):
+                    raise
+                if target.exists():
+                    raise FileExistsError
+                os.replace(temporary, target)
         except FileExistsError as exc:
             raise AppError(409, "project_exists", "This project ID already exists; use a new project ID.") from exc
         finally:

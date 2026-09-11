@@ -42,6 +42,7 @@ def driver():
     """Single driver for all M2 tests."""
     try:
         d = get_driver()
+        d.verify_connectivity()
         yield d
     except Exception as e:
         pytest.skip(f"Neo4j not available: {e}")

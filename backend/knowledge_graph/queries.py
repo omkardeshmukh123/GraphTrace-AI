@@ -1,11 +1,7 @@
 """
 M2 — Knowledge Graph Engine — Graph Query Engine
 ==================================================
-Provides clean graph query functions for M3 (Intelligence & Reasoning Engine).
-
-M3 must NEVER write raw Cypher queries.
-M3 must NEVER import Neo4j directly.
-M3 uses only these functions — this is the M2→M3 interface contract.
+Provides graph query functions for M2 standalone server and knowledge graph inspection.
 
 Phase 1 query functions:
   get_graph_data(project_id)   → all nodes + relationships for visualization
