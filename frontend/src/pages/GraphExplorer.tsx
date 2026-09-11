@@ -7,7 +7,8 @@ import { nodeColor, nodeSize } from '../nodeColors';
 import NodeCard from '../components/NodeCard';
 
 interface FGNode extends GraphNode {
-  x?: number; y?: number;
+  x?: number;
+  y?: number;
   __highlighted?: boolean;
 }
 
@@ -24,27 +25,30 @@ export default function GraphExplorer() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
+  const [hoverNode, setHoverNode] = useState<GraphNode | null>(null);
   const [search, setSearch] = useState('');
   const [activeTypes, setActiveTypes] = useState<Set<string>>(new Set());
-  const [showFilters, setShowFilters] = useState(false);
+  const [isPhysicsPaused, setIsPhysicsPaused] = useState(false);
+  const [focusNeighborsMode, setFocusNeighborsMode] = useState(false);
+  const [showLabels, setShowLabels] = useState(true);
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const fgRef = useRef<any>(null);
 
-  // Load graph
+  // Load Graph Data
   useEffect(() => {
     if (!projectId) return;
     const nodeType = searchParams.get('nodeType');
     api.getGraph(projectId, nodeType ? { nodeTypes: [nodeType] } : undefined)
       .then((data) => {
         setGraphData(data);
-        // enable all types by default
         setActiveTypes(new Set(data.nodes.map((n) => n.type)));
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, [projectId, searchParams]);
 
-  // Derived: filter by active types + search
+  // Derived: Active filtered nodes and links
   const { nodes, links } = useMemo(() => {
     if (!graphData) return { nodes: [], links: [] };
 
@@ -52,7 +56,8 @@ export default function GraphExplorer() {
     const filtered = graphData.nodes.filter(
       (n) =>
         activeTypes.has(n.type) &&
-        (!searchLower || n.name.toLowerCase().includes(searchLower) ||
+        (!searchLower ||
+          n.name.toLowerCase().includes(searchLower) ||
           String(n.properties?.path ?? '').toLowerCase().includes(searchLower))
     );
     const filteredIds = new Set(filtered.map((n) => n.id));
@@ -64,16 +69,19 @@ export default function GraphExplorer() {
     return { nodes: filtered as FGNode[], links: filteredLinks as FGLink[] };
   }, [graphData, activeTypes, search]);
 
-  // Highlight neighbours on selection
+  // Highlight neighborhood on selection
   const highlightedIds = useMemo(() => {
-    if (!selectedNode) return new Set<string>();
-    const ids = new Set<string>([selectedNode.id]);
+    if (!selectedNode && !hoverNode) return new Set<string>();
+    const focal = selectedNode || hoverNode;
+    if (!focal) return new Set<string>();
+
+    const ids = new Set<string>([focal.id]);
     for (const e of links) {
-      if (e.source === selectedNode.id) ids.add(e.target as string);
-      if (e.target === selectedNode.id) ids.add(e.source as string);
+      if (e.source === focal.id) ids.add(e.target as string);
+      if (e.target === focal.id) ids.add(e.source as string);
     }
     return ids;
-  }, [selectedNode, links]);
+  }, [selectedNode, hoverNode, links]);
 
   const handleNodeClick = useCallback(
     (node: FGNode) => {
@@ -87,10 +95,10 @@ export default function GraphExplorer() {
     (id: string) => {
       const match = graphData?.nodes.find((n) => n.id === id);
       setSelectedNode(match ?? null);
-      // Zoom to node
       const fgNode = nodes.find((n) => n.id === id);
       if (fgNode?.x !== undefined && fgRef.current?.centerAt) {
-        fgRef.current.centerAt(fgNode.x, fgNode.y, 500);
+        fgRef.current.centerAt(fgNode.x, fgNode.y, 600);
+        fgRef.current.zoom(2.2, 600);
       }
     },
     [graphData, nodes]
@@ -98,8 +106,7 @@ export default function GraphExplorer() {
 
   const allTypes = useMemo(() => {
     if (!graphData) return [];
-    const types = [...new Set(graphData.nodes.map((n) => n.type))].sort();
-    return types;
+    return Array.from(new Set(graphData.nodes.map((n) => n.type))).sort();
   }, [graphData]);
 
   function toggleType(type: string) {
@@ -111,188 +118,251 @@ export default function GraphExplorer() {
     });
   }
 
-  const hasHighlight = highlightedIds.size > 0;
+  // Camera Actions
+  const handleZoomIn = () => {
+    if (fgRef.current?.zoom) {
+      fgRef.current.zoom(fgRef.current.zoom() * 1.3, 300);
+    }
+  };
+  const handleZoomOut = () => {
+    if (fgRef.current?.zoom) {
+      fgRef.current.zoom(fgRef.current.zoom() / 1.3, 300);
+    }
+  };
+  const handleFitView = () => {
+    if (fgRef.current?.zoomToFit) {
+      fgRef.current.zoomToFit(400, 50);
+    }
+  };
+  const handleTogglePhysics = () => {
+    if (fgRef.current?.pauseAnimation && fgRef.current?.resumeAnimation) {
+      if (isPhysicsPaused) fgRef.current.resumeAnimation();
+      else fgRef.current.pauseAnimation();
+      setIsPhysicsPaused(!isPhysicsPaused);
+    }
+  };
 
-  if (loading) return (
-    <div className="explorer-shell">
-      <div className="loading" style={{ flex: 1 }}><div className="spinner" /> Loading graph…</div>
-    </div>
-  );
+  // Custom Node Canvas Renderer
+  const paintNode = useCallback(
+    (node: FGNode, ctx: CanvasRenderingContext2D, globalScale: number) => {
+      const { x = 0, y = 0, type, name } = node;
+      const baseRadius = nodeSize(type);
+      const isSelected = selectedNode?.id === node.id;
+      const isHovered = hoverNode?.id === node.id;
+      const isHighlighted = highlightedIds.has(node.id);
+      const dim = focusNeighborsMode && selectedNode && !isHighlighted;
 
-  if (error) return (
-    <div className="page-content">
-      <div className="error-box">⚠ {error}</div>
-      <button className="btn btn-ghost" onClick={() => navigate(-1)}>← Back</button>
-    </div>
+      ctx.save();
+      ctx.globalAlpha = dim ? 0.15 : 1;
+
+      const color = nodeColor(type);
+
+      // Outer halo for selected or hovered
+      if (isSelected || isHovered) {
+        ctx.beginPath();
+        ctx.arc(x, y, baseRadius + 4, 0, 2 * Math.PI, false);
+        ctx.fillStyle = `${color}44`;
+        ctx.fill();
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = color;
+        ctx.stroke();
+      }
+
+      // Core Circle
+      ctx.beginPath();
+      ctx.arc(x, y, baseRadius, 0, 2 * Math.PI, false);
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+      ctx.stroke();
+
+      // Node Label (Visible when zoomed in or selected/hovered)
+      if (showLabels && (globalScale > 0.8 || isSelected || isHovered)) {
+        const fontSize = Math.max(10 / globalScale, 3);
+        ctx.font = `${isSelected ? 'bold ' : ''}${fontSize}px "Plus Jakarta Sans", system-ui, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        // Text background badge for clarity
+        const textWidth = ctx.measureText(name).width;
+        ctx.fillStyle = 'rgba(8, 10, 15, 0.85)';
+        ctx.fillRect(x - textWidth / 2 - 3, y + baseRadius + 3, textWidth + 6, fontSize + 4);
+
+        ctx.fillStyle = isSelected ? '#fff' : '#cbd5e1';
+        ctx.fillText(name, x, y + baseRadius + 3 + fontSize / 2 + 1);
+      }
+
+      ctx.restore();
+    },
+    [selectedNode, hoverNode, highlightedIds, focusNeighborsMode, showLabels]
   );
 
   return (
-    <div className="explorer-shell">
-      {/* Graph canvas */}
-      <div className="graph-panel">
-        {/* Search bar */}
-        <div className="graph-search">
-          <input
-            className="input"
-            placeholder="Search nodes…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{ boxShadow: 'var(--shadow-md)' }}
-          />
-        </div>
-
-        {/* Controls */}
-        <div className="graph-controls">
-          <button className="btn btn-ghost" onClick={() => navigate(`/projects/${projectId}`)}>
-            ← Dashboard
-          </button>
-          <button
-            className={`btn ${showFilters ? 'btn-primary' : 'btn-ghost'}`}
-            onClick={() => setShowFilters((v) => !v)}
-          >
-            🎛 Filter
-          </button>
-        </div>
-
-        {/* Filter panel */}
-        {showFilters && (
-          <div className="filter-panel" style={{ right: 'calc(var(--sidebar-w) + 16px)' }}>
-            <div className="filter-title">Node Types</div>
-            <div
-              className="filter-item"
-              style={{ marginBottom: 6, borderBottom: '1px solid var(--border)', paddingBottom: 6 }}
-              onClick={() =>
-                setActiveTypes(activeTypes.size === allTypes.length ? new Set() : new Set(allTypes))
-              }
+    <div className="graph-observatory">
+      {/* Floating Top Control Toolbar */}
+      <div className="floating-toolbar">
+        {/* Left: Project title & Node count */}
+        <div className="toolbar-group">
+          <div className="glass-pill-bar">
+            <button
+              className="btn btn-ghost btn-sm"
+              onClick={() => navigate(`/projects/${projectId}`)}
+              style={{ color: '#fff', fontWeight: 700 }}
             >
-              <div className={`filter-check ${activeTypes.size === allTypes.length ? 'checked' : ''}`}>
-                {activeTypes.size === allTypes.length && <span style={{ fontSize: 9, color: '#fff' }}>✓</span>}
-              </div>
-              All types
-            </div>
-            {allTypes.map((t) => (
-              <div key={t} className="filter-item" onClick={() => toggleType(t)}>
-                <div className={`filter-check ${activeTypes.has(t) ? 'checked' : ''}`}>
-                  {activeTypes.has(t) && <span style={{ fontSize: 9, color: '#fff' }}>✓</span>}
-                </div>
-                <div className="legend-dot" style={{ background: nodeColor(t) }} />
-                {t}
-              </div>
-            ))}
+              ← Dashboard
+            </button>
+            <span style={{ color: 'var(--border-card)' }}>|</span>
+            <span style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>
+              Showing <strong style={{ color: '#fff' }}>{nodes.length}</strong> nodes, <strong style={{ color: '#fff' }}>{links.length}</strong> links
+            </span>
           </div>
-        )}
 
-        {/* Legend */}
-        <div className="graph-legend">
-          {allTypes.map((t) => (
-            <div key={t} className="legend-item">
-              <div className="legend-dot" style={{ background: nodeColor(t) }} />
-              {t}
-            </div>
-          ))}
+          {/* Neighborhood Dim Mode Toggle */}
+          <button
+            className={`btn btn-sm ${focusNeighborsMode ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setFocusNeighborsMode(!focusNeighborsMode)}
+            title="Dim nodes not directly connected to the selected entity"
+          >
+            🎯 Neighbor Focus
+          </button>
         </div>
 
-        {/* Stats overlay */}
-        <div
-          style={{
-            position: 'absolute', bottom: 16, right: 'calc(var(--sidebar-w) + 16px)',
-            background: 'var(--bg-surface)', border: '1px solid var(--border)',
-            borderRadius: 'var(--radius-sm)', padding: '6px 12px',
-            fontSize: 11, color: 'var(--text-muted)', zIndex: 10,
-          }}
-        >
-          {nodes.length} nodes · {links.length} edges
+        {/* Right: Search Bar */}
+        <div className="toolbar-group">
+          <div className="search-input-wrapper">
+            <span className="search-icon-inside">🔍</span>
+            <input
+              type="text"
+              className="search-input"
+              placeholder="Search graph entities…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                style={{ position: 'absolute', right: 12, background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+              >
+                ✕
+              </button>
+            )}
+          </div>
         </div>
+      </div>
 
+      {/* Loading overlay */}
+      {loading && (
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(8,10,15,0.7)', zIndex: 15, gap: 12 }}>
+          <div className="spinner" /> Loading graph dataset…
+        </div>
+      )}
+
+      {error && (
+        <div style={{ position: 'absolute', top: 80, left: 24, zIndex: 15, padding: '12px 18px', background: 'rgba(244,63,94,0.15)', border: '1px solid rgba(244,63,94,0.3)', borderRadius: 8, color: '#fda4af' }}>
+          ⚠️ {error}
+        </div>
+      )}
+
+      {/* 2D Force Directed Graph Canvas */}
+      {!loading && (
         <ForceGraph2D
           ref={fgRef}
           graphData={{ nodes, links }}
           nodeId="id"
-          nodeLabel="name"
-          linkSource="source"
-          linkTarget="target"
-          backgroundColor="var(--bg-base)"
-          nodeCanvasObject={(node, ctx, globalScale) => {
-            const n = node as FGNode;
-            const color = nodeColor(n.type);
-            const size = nodeSize(n.type);
-            const x = n.x ?? 0;
-            const y = n.y ?? 0;
-            const dimmed = hasHighlight && !highlightedIds.has(n.id);
-            const selected = selectedNode?.id === n.id;
-
-            // Glow for selected
-            if (selected) {
-              ctx.shadowBlur = 16;
-              ctx.shadowColor = color;
-            }
-
-            ctx.globalAlpha = dimmed ? 0.15 : 1;
+          nodeLabel={(n: any) => `${n.type}: ${n.name}`}
+          nodeCanvasObject={paintNode as any}
+          nodePointerAreaPaint={(node: any, color, ctx) => {
             ctx.beginPath();
-            ctx.arc(x, y, size, 0, 2 * Math.PI);
+            ctx.arc(node.x, node.y, nodeSize(node.type) + 3, 0, 2 * Math.PI, false);
             ctx.fillStyle = color;
             ctx.fill();
-
-            // Selection ring
-            if (selected) {
-              ctx.strokeStyle = '#fff';
-              ctx.lineWidth = 1.5;
-              ctx.stroke();
-              ctx.shadowBlur = 0;
-            }
-
-            ctx.globalAlpha = 1;
-
-            // Label when zoomed in
-            if (globalScale > 1.8) {
-              ctx.font = `${Math.max(8, 10 / globalScale)}px Inter`;
-              ctx.fillStyle = dimmed ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.8)';
-              ctx.textAlign = 'center';
-              ctx.textBaseline = 'middle';
-              ctx.fillText(n.name.length > 20 ? n.name.slice(0, 18) + '…' : n.name, x, y + size + 8 / globalScale);
-            }
           }}
-          nodePointerAreaPaint={(node, color, ctx) => {
-            const n = node as FGNode;
-            const size = nodeSize(n.type) + 3;
-            ctx.fillStyle = color;
-            ctx.beginPath();
-            ctx.arc(n.x ?? 0, n.y ?? 0, size, 0, 2 * Math.PI);
-            ctx.fill();
+          onNodeClick={handleNodeClick as any}
+          onNodeHover={(n: any) => setHoverNode(n ? { id: n.id, type: n.type, name: n.name, properties: n.properties } : null)}
+          linkColor={(link: any) => {
+            const isHighlighted = highlightedIds.has(link.source?.id || link.source) && highlightedIds.has(link.target?.id || link.target);
+            if (isHighlighted) return 'rgba(129, 140, 248, 0.85)';
+            return focusNeighborsMode && selectedNode ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.12)';
           }}
-          linkColor={(link) => {
-            const l = link as FGLink;
-            const src = typeof l.source === 'object' ? (l.source as FGNode).id : l.source;
-            const tgt = typeof l.target === 'object' ? (l.target as FGNode).id : l.target;
-            if (!hasHighlight) return 'rgba(100,116,139,0.35)';
-            if (selectedNode && (src === selectedNode.id || tgt === selectedNode.id))
-              return 'rgba(255,255,255,0.6)';
-            return 'rgba(100,116,139,0.08)';
+          linkWidth={(link: any) => {
+            const isHighlighted = highlightedIds.has(link.source?.id || link.source) && highlightedIds.has(link.target?.id || link.target);
+            return isHighlighted ? 2.2 : 1;
           }}
-          linkWidth={(link) => {
-            const l = link as FGLink;
-            const src = typeof l.source === 'object' ? (l.source as FGNode).id : l.source;
-            const tgt = typeof l.target === 'object' ? (l.target as FGNode).id : l.target;
-            if (selectedNode && (src === selectedNode.id || tgt === selectedNode.id)) return 2;
-            return 0.8;
+          linkDirectionalParticles={2}
+          linkDirectionalParticleSpeed={0.005}
+          linkDirectionalParticleWidth={(link: any) => {
+            const isHighlighted = highlightedIds.has(link.source?.id || link.source) && highlightedIds.has(link.target?.id || link.target);
+            return isHighlighted ? 3 : 1.5;
           }}
-          linkDirectionalArrowLength={3}
-          linkDirectionalArrowRelPos={1}
-          linkDirectionalArrowColor={() => 'rgba(100,116,139,0.5)'}
-          onNodeClick={handleNodeClick}
-          onBackgroundClick={() => setSelectedNode(null)}
-          cooldownTime={3000}
+          linkDirectionalParticleColor={(link: any) => {
+            const isHighlighted = highlightedIds.has(link.source?.id || link.source) && highlightedIds.has(link.target?.id || link.target);
+            return isHighlighted ? '#a855f7' : '#6366f1';
+          }}
+          backgroundColor="#080a0f"
+          cooldownTicks={120}
         />
+      )}
+
+      {/* Floating Bottom Type Filter Pills */}
+      <div className="type-pills-panel">
+        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginRight: 4 }}>
+          Filters:
+        </span>
+        {allTypes.map((type) => {
+          const active = activeTypes.has(type);
+          const count = graphData?.nodes.filter((n) => n.type === type).length || 0;
+          return (
+            <div
+              key={type}
+              className={`type-pill ${active ? 'active' : 'inactive'}`}
+              onClick={() => toggleType(type)}
+            >
+              <span className="type-pill-dot" style={{ background: nodeColor(type) }} />
+              <span>{type}</span>
+              <span style={{ opacity: 0.6, fontSize: 10.5 }}>({count})</span>
+            </div>
+          );
+        })}
       </div>
 
-      {/* Detail panel */}
-      <NodeCard
-        node={selectedNode}
-        allNodes={graphData?.nodes ?? []}
-        allEdges={graphData?.relationships ?? []}
-        onNodeClick={handleNodeClickById}
-        onClose={() => setSelectedNode(null)}
-      />
+      {/* Floating Camera Actions */}
+      <div className="camera-controls">
+        <button className="camera-btn" onClick={handleZoomIn} title="Zoom In">
+          ＋
+        </button>
+        <button className="camera-btn" onClick={handleZoomOut} title="Zoom Out">
+          －
+        </button>
+        <button className="camera-btn" onClick={handleFitView} title="Center & Fit Graph">
+          ⤢
+        </button>
+        <button
+          className="camera-btn"
+          onClick={handleTogglePhysics}
+          title={isPhysicsPaused ? 'Resume Physics' : 'Freeze Graph Simulation'}
+        >
+          {isPhysicsPaused ? '▶' : '⏸'}
+        </button>
+        <button
+          className="camera-btn"
+          onClick={() => setShowLabels(!showLabels)}
+          title={showLabels ? 'Hide Labels' : 'Show Labels'}
+        >
+          🏷️
+        </button>
+      </div>
+
+      {/* Sliding Node Detail Drawer */}
+      {selectedNode && (
+        <NodeCard
+          node={selectedNode}
+          allNodes={graphData?.nodes || []}
+          allEdges={graphData?.relationships || []}
+          onNodeClick={handleNodeClickById}
+          onClose={() => setSelectedNode(null)}
+        />
+      )}
     </div>
   );
 }

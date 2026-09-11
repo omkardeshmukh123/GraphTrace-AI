@@ -1,6 +1,6 @@
 /* ───────────────────────────────────────────────
-   GraphTrace AI — M3 API client
-   All fetch wrappers typed against M3's routes.py
+   GraphTrace AI — API Client
+   Typed against M3 REST API specifications
    ─────────────────────────────────────────────── */
 
 const BASE = '/api';
@@ -25,6 +25,7 @@ export interface ProjectSummary {
   node_count: number;
   relationship_count: number;
   counts: Record<string, number>;
+  status?: string;
   source: string;
 }
 
@@ -39,7 +40,7 @@ export interface GraphEdge {
   source: string;
   target: string;
   type: string;
-  properties: Record<string, unknown>;
+  properties?: Record<string, unknown>;
 }
 
 export interface GraphView {
@@ -48,37 +49,41 @@ export interface GraphView {
   relationships: GraphEdge[];
 }
 
-export interface DependencyNode {
-  id: string;
-  type: string;
-  name: string;
-  depth: number;
-  properties: Record<string, unknown>;
-}
-
-export interface DependencyEdge {
-  source: string;
-  target: string;
-  type: string;
-}
-
 export interface DependencyView {
+  project_id: string;
   root: string;
-  direction: string;
-  nodes: DependencyNode[];
-  relationships: DependencyEdge[];
+  direction: 'upstream' | 'downstream';
+  nodes: GraphNode[];
+  relationships: GraphEdge[];
+  distances: Record<string, number>;
+  depth_limited: boolean;
+}
+
+export interface PathView {
+  project_id: string;
+  found: boolean;
+  node_ids: string[];
+  relationships: GraphEdge[];
+  max_depth: number;
+  directed: boolean;
 }
 
 export interface RequirementSummary {
-  id: string;
-  name: string;
-  reference: string;
+  requirement: GraphNode;
+  mapping_status: 'mapped' | 'unmapped';
+  implementation_count: number;
 }
 
 export interface TraceabilityView {
-  requirement_id: string;
+  project_id: string;
   nodes: GraphNode[];
   relationships: GraphEdge[];
+  requirement: GraphNode;
+  mapping_status: 'mapped' | 'unmapped';
+  implementation_ids: string[];
+  evidence_paths: string[][];
+  depth_limited: boolean;
+  note?: string;
 }
 
 /* ── Endpoints ── */
@@ -127,11 +132,22 @@ export const api = {
       `/projects/${projectId}/dependencies/${nodeId}?direction=${direction}&max_depth=${maxDepth}`
     ),
 
+  getPaths: (
+    projectId: string,
+    source: string,
+    target: string,
+    maxDepth = 6,
+    directed = true
+  ) =>
+    req<PathView>(
+      `/projects/${projectId}/paths?source=${encodeURIComponent(source)}&target=${encodeURIComponent(target)}&max_depth=${maxDepth}&directed=${directed}`
+    ),
+
   getRequirements: (projectId: string) =>
     req<RequirementSummary[]>(`/projects/${projectId}/requirements`),
 
   getTraceability: (projectId: string, requirementId: string, maxDepth = 5) =>
     req<TraceabilityView>(
-      `/projects/${projectId}/traceability/${requirementId}?max_depth=${maxDepth}`
+      `/projects/${projectId}/traceability/${encodeURIComponent(requirementId)}?max_depth=${maxDepth}`
     ),
 };
