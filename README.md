@@ -1,160 +1,172 @@
 # GraphTrace AI
 
-Software knowledge graph for dependency analysis and requirement traceability.
-This repository currently contains the **backend developer's Phase 1–3 API work**.
+> An Explainable Software Engineering Intelligence Platform based on a Software Knowledge Graph.
 
-Implemented: FastAPI, ZIP validation/extraction, parser coordination, shared JSON
-contract, persistent local graph storage, Neo4j read adapter, graph filtering,
-dependency traversal, shortest paths, manual requirement mappings and traceability.
+---
 
-Your teammate still implements the real artifact parser, Neo4j setup and atomic
-graph writer. The frontend is separate. Phase 1–3 end-to-end gates are pending
-those integrations; the local demo uses explicitly hand-authored graph data.
+## Project Structure
 
-## Run locally
-
-Use Python 3.11 or newer. Commands below run from the repository root on Windows
-PowerShell; activation is unnecessary because they use the virtual environment's
-Python directly.
-
-```powershell
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r backend/requirements-dev.txt
-Copy-Item backend/.env.example backend/.env
-.\.venv\Scripts\python.exe -m uvicorn backend.app.main:app --reload
+```
+graphtrace-ai/
+├── backend/                            ← All Python backend code
+│   ├── artifact_intelligence/          ← M1: Parse raw artifacts → ArtifactGraph JSON
+│   │   ├── models.py                   ← Internal Entity/Relationship/ArtifactData models
+│   │   ├── zip_handler.py              ← ZIP extraction & file scanning
+│   │   ├── readme_parser.py            ← README.md parsing
+│   │   ├── code_parser.py              ← Python/JS/TS class+function extraction
+│   │   └── analyzer.py                 ← M1 orchestrator
+│   │
+│   ├── knowledge_graph/                ← M2: Neo4j standalone adapter (local dev)
+│   │   ├── connection.py               ← Driver singleton
+│   │   ├── schema.py                   ← Constraints & indexes
+│   │   ├── builder.py                  ← Standalone write API
+│   │   └── queries.py                  ← Standalone query API
+│   │
+│   ├── app/                            ← M3: FastAPI Backend (primary server)
+│   │   ├── main.py                     ← App factory (CORS, error handlers, lifespan)
+│   │   ├── config.py                   ← Settings via GRAPHTRACE_* env vars
+│   │   ├── models.py                   ← Shared ArtifactGraph contract (M1↔M2↔M3)
+│   │   ├── analysis.py                 ← Analysis pipeline orchestrator
+│   │   ├── uploads.py                  ← Secure ZIP extraction
+│   │   ├── plugins.py                  ← Plugin loader (parser + graph_writer)
+│   │   ├── errors.py                   ← AppError class
+│   │   ├── api/routes.py               ← All REST endpoints
+│   │   ├── graph/
+│   │   │   ├── store.py                ← LocalGraphStore + Neo4jGraphStore
+│   │   │   ├── queries.py              ← Graph traversals (BFS, paths, traceability)
+│   │   │   └── builder.py             ← [M2] Neo4j writer plugin (our implementation)
+│   │   └── parsers/
+│   │       └── pipeline.py             ← [M1] Parser plugin (our implementation)
+│   │
+│   ├── tests/
+│   │   ├── test_m1_parsers.py          ← 25 M1 unit tests (no Neo4j)
+│   │   ├── test_parser_plugin.py       ← 20 M1→M3 integration tests (no Neo4j)
+│   │   ├── test_m2_graph.py            ← M2 Neo4j integration tests (needs .env)
+│   │   ├── test_api.py                 ← M3 API tests (from Member 3)
+│   │   └── test_neo4j_adapter.py       ← M3 Neo4j adapter tests
+│   │
+│   ├── requirements.txt                ← Unified dependencies (M1+M2+M3)
+│   └── .env.example                    ← Copy to .env and fill credentials
+│
+├── docs/
+│   ├── INTEGRATION.md                  ← M1/M2/M3 interface contracts
+│   ├── dev_diary.md                    ← Phase 1 development diary
+│   ├── GT_Modules.md                   ← Module & phase breakdown
+│   └── GraphTrace AI — Complete Project Master Specification.md
+│
+├── sample_project/                     ← Test repository (e-commerce app)
+├── sample_data/                        ← Demo graph JSON + sample SRS
+├── shared/artifact_schema.json         ← JSON Schema for ArtifactGraph
+├── scripts/                            ← Utility scripts
+└── pytest.ini
 ```
 
-Open **http://127.0.0.1:8000/docs** for the interactive API. The default local mode
-needs neither Neo4j nor a parser to import and query structured JSON.
+---
 
-## Try the backend now
+## Architecture: How M1, M2, M3 Connect
 
-With the server running, use another PowerShell terminal:
-
-```powershell
-$demo = Get-Content sample_data/demo_graph.json -Raw
-Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/projects/import -ContentType application/json -Body $demo
-Invoke-RestMethod http://127.0.0.1:8000/projects/demo/graph
-Invoke-RestMethod 'http://127.0.0.1:8000/projects/demo/dependencies/method-find?direction=upstream'
-Invoke-RestMethod 'http://127.0.0.1:8000/projects/demo/paths?source=function-login&target=method-find'
-Invoke-RestMethod http://127.0.0.1:8000/projects/demo/requirements
-Invoke-RestMethod http://127.0.0.1:8000/projects/demo/traceability/req-login
+```
+Upload project.zip + optional SRS.md + mappings.json
+              ↓ POST /projects/analyze
+M3 FastAPI (backend/app/main.py)
+              ↓ calls plugin
+M1 Parser Plugin (backend/app/parsers/pipeline.py)
+              ↓ uses
+M1 ArtifactAnalyzer (backend/artifact_intelligence/)
+              ↓ produces
+ArtifactGraph (backend/app/models.py)  ← shared contract
+              ↓
+M2 Graph Writer Plugin (backend/app/graph/builder.py)
+              ↓ writes to
+Neo4j AuraDB
+              ↓ queried by
+M3 GraphQueryEngine (backend/app/graph/queries.py)
+              ↓ served via
+REST API → M4 Frontend (Phase 1+)
 ```
 
-Import the demo once; a repeated import returns **409** rather than overwriting.
-The graph persists under `.data/graphs/` across server restarts.
+**Key integration points:**
+- `backend/app/models.py` → single source of truth for the `ArtifactGraph` contract
+- `backend/app/parsers/pipeline.py` → M1 implements M3's parser plugin interface
+- `backend/app/graph/builder.py` → M2 implements M3's Neo4j writer plugin interface
+- `docs/INTEGRATION.md` → detailed interface contract and checklist
 
-The demo exposes this path:
+---
 
-```text
-REQ-001 → login_user → AuthService.login → UserRepository.find
+## Setup
+
+### 1. Install Dependencies
+
+```bash
+cd backend
+python -m venv venv
+venv\Scripts\activate          # Windows
+pip install -r requirements.txt
 ```
 
-REQ-002 is intentionally unmapped. API graph responses contain `nodes` and
-`relationships`; each relationship retains its actual source/target direction.
+### 2. Configure Environment
 
-## Real repository analysis
-
-First follow [the teammate integration contract](docs/INTEGRATION.md) and configure
-`GRAPHTRACE_PARSER`. Generate a ZIP fixture:
-
-```powershell
-.\.venv\Scripts\python.exe -m scripts.make_demo
+```bash
+copy .env.example .env
+# Edit .env and fill in NEO4J credentials from console.neo4j.io
 ```
 
-In `/docs`, open `POST /projects/analyze`, click **Try it out**, then select:
+### 3. Start the Server (M3 — Primary)
 
-- `repository`: `.data/sample_project.zip`
-- `requirements`: `sample_data/requirements.md` (optional)
-- `mappings`: `sample_data/mappings.json` (optional)
-
-Analysis runs synchronously and returns a new project ID after successful storage.
-Without a configured parser it returns **503 integration_not_configured**. The API
-never substitutes a demo graph for a real repository. Every upload creates a new
-project; incremental updates and background progress tracking are future work.
-
-## API
-
-| Method | Route | Purpose |
-| --- | --- | --- |
-| GET | `/health` | Process health and selected store |
-| GET | `/health/ready` | Storage connectivity |
-| GET | `/projects` | Project summaries and counts |
-| POST | `/projects/import` | Import a validated artifact graph |
-| POST | `/projects/analyze` | Analyze ZIP + optional Markdown SRS/mappings |
-| GET | `/projects/{project_id}` | Project summary |
-| GET | `/projects/{project_id}/graph` | Graph with optional filters |
-| GET | `/projects/{project_id}/dependencies/{node_id}` | Upstream/downstream traversal |
-| GET | `/projects/{project_id}/paths` | One shortest path between source and target |
-| GET | `/projects/{project_id}/requirements` | Requirements and mapping status |
-| GET | `/projects/{project_id}/traceability/{requirement_id}` | Explicit mappings and contextual code paths |
-
-Use repeated `node_type` / `relationship_type` query parameters for multiple
-filters, e.g. `?node_type=CLASS&node_type=METHOD`. `search` matches node name or ID
-case-insensitively. Graph filters retain only edges whose endpoints remain visible.
-
-Dependency queries take `direction=upstream|downstream`, `max_depth=1..10`
-(default 3), and optional `relationship_type`. The root is included, with distance
-zero. For **A CALLS B**, B is downstream of A; A is upstream of B. Class-level
-dependencies require corresponding parser-emitted DEPENDS_ON edges.
-
-Path queries require `source` and `target`, with `max_depth` defaulting to 6 and
-`directed=true`. Set `directed=false` to traverse either direction. Returned edge
-directions are preserved even during reverse traversal. `found=false` means no
-path was found **within the requested depth and filters**.
-
-Traceability follows IMPLEMENTED_BY first, then code dependencies/containment.
-It returns direct `implementation_ids`, contextual `evidence_paths`, and
-`mapping_status`. Mapped does not mean correctness, test coverage or verified
-completion. `depth_limited=true` means reachable context extends beyond the result.
-
-Errors use `{"error":{"code":"...","message":"..."}}`. Invalid requests return
-422, missing projects/nodes 404, duplicate projects 409, excessive input 413,
-invalid parser output 502 and unavailable integrations/database 503.
-
-## Repository layout
-
-```text
-backend/app/
-  api/routes.py       HTTP endpoints
-  main.py             App lifecycle, CORS, errors, request size limits
-  config.py           Environment settings
-  models.py           Shared data contract and ID helper
-  uploads.py          Safe ZIP extraction and sidecar validation
-  analysis.py         Parser → manual mappings → storage coordination
-  parsers/            Teammate's parsers go here
-  graph/store.py      Local and Neo4j adapters
-  graph/queries.py    Dependency/path/traceability queries
-backend/tests/        API and integration-contract tests
-shared/               Generated artifact JSON Schema
-sample_project/       Small Python parser input
-sample_data/          Hand-authored graph, requirements, mappings
-docs/INTEGRATION.md    Exact teammate handoff
-scripts/              Fixture and schema generation
+```bash
+# From project root:
+uvicorn backend.app.main:app --reload --port 8000
 ```
 
-## Tests and limits
+Visit **http://localhost:8000/docs** for the interactive API.
 
-```powershell
-.\.venv\Scripts\python.exe -m pytest -q
+---
+
+## Running Tests
+
+```bash
+# From project root:
+
+# M1 unit tests (no Neo4j required)
+.\backend\venv\Scripts\python -m pytest backend/tests/test_m1_parsers.py -v
+
+# M1→M3 integration tests (no Neo4j required)
+.\backend\venv\Scripts\python -m pytest backend/tests/test_parser_plugin.py -v
+
+# All tests without Neo4j
+.\backend\venv\Scripts\python -m pytest backend/tests/test_m1_parsers.py backend/tests/test_parser_plugin.py -v
+
+# All tests (needs Neo4j .env for M2/M3 tests)
+.\backend\venv\Scripts\python -m pytest -v
 ```
 
-Tests exercise graph validation, isolation, cycles, path direction/depth, mapping
-status, persistence, uploads, cleanup, size limits and integration failures. Neo4j
-adapter tests use a test double; a live database and real parser must be validated
-separately using the integration checklist.
+**Current status: 45/45 tests passing ✅** (M1 unit + M1→M3 integration)
 
-Prototype limits: 20 MiB ZIP, 100 MiB extracted content, 2,000 ZIP entries,
-1 MiB each for requirements/mappings, 5,000 nodes and 20,000 relationships.
-ZIP uploads containing links, path traversal, case collisions or unsupported files
-are rejected. Uploaded code is never executed by this backend. Requests are
-bounded during body reading; uploads are removed after analysis.
+---
 
-This is a local development API with no authentication. Project scoping separates
-graph queries but is not user access control. Run it on localhost while building.
-There is no PDF parsing, automatic requirement matching, frontend, GraphRAG, LLM,
-test intelligence or change-impact module in this backend milestone.
+## API Endpoints (M3)
 
-Implementation references: [FastAPI file uploads](https://fastapi.tiangolo.com/tutorial/request-files/),
-[FastAPI application lifespan](https://fastapi.tiangolo.com/advanced/events/),
-[Neo4j Python query parameters](https://neo4j.com/docs/python-manual/current/query-simple/).
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/health` | Health check |
+| `GET` | `/health/ready` | Neo4j connectivity check |
+| `GET` | `/projects` | List all analyzed projects |
+| `POST` | `/projects/analyze` | Upload ZIP + analyze (requires parser plugin) |
+| `POST` | `/projects/import` | Import pre-built ArtifactGraph JSON |
+| `GET` | `/projects/{id}` | Project summary |
+| `GET` | `/projects/{id}/graph` | Full graph (filterable by type/search) |
+| `GET` | `/projects/{id}/dependencies/{node_id}` | Upstream/downstream deps |
+| `GET` | `/projects/{id}/paths` | Shortest path between two nodes |
+| `GET` | `/projects/{id}/requirements` | All requirements + mapping status |
+| `GET` | `/projects/{id}/traceability/{req_id}` | Requirement → code trace |
+
+---
+
+## Development Team
+
+| Member | Layer | Responsibility |
+|--------|-------|---------------|
+| **M1** | Artifact Intelligence | `backend/artifact_intelligence/` + `backend/app/parsers/pipeline.py` |
+| **M2** | Knowledge Graph Engine | `backend/knowledge_graph/` + `backend/app/graph/builder.py` |
+| **M3** | FastAPI Backend | `backend/app/` (main, routes, queries, store, models) |
+| **M4** | Frontend & Visualization | React dashboard (Phase 1+) |

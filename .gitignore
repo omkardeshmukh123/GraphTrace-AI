@@ -1,16 +1,42 @@
-.venv/
-venv/
+# Python
 __pycache__/
 *.py[cod]
-.pytest_cache/
-.ruff_cache/
-.coverage
-htmlcov/
-.env
-.env.*
-!.env.example
-.data/
-node_modules/
-.next/
+*$py.class
+*.so
+*.egg
+*.egg-info/
 dist/
+build/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+
+# Virtual environments
+venv/
+env/
+.venv/
+.env
+
+# Project runtime directories
+uploads/
+extracted/
+
+# IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Neo4j
+neo4j/data/
+neo4j/logs/
+
+# Logs
 *.log
