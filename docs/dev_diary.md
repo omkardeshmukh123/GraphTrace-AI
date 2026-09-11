@@ -7,6 +7,75 @@
 
 ---
 
+## Session 2 — 2026-09-11
+
+### Goals
+- Push M1+M2 work to a safe branch before pulling M3
+- Pull Member 3's work from `origin/main` and integrate locally
+- Achieve 45/45 tests passing before any git merge
+
+### Work Done
+
+#### 1. Branch Safety
+- Created `feature/m1-m2-phase1` branch with all M1+M2 work committed and pushed
+- Pulled M3's `main` branch (36 new files, 2062 insertions)
+
+#### 2. M3 Code Analysis
+Member 3 built a production-grade FastAPI backend in `backend/app/`:
+- `main.py` — App factory with request size limits, structured error handlers, CORS
+- `models.py` — Shared `ArtifactGraph` contract (Node, Relationship, with uuid5 IDs)
+- `api/routes.py` — 9 REST endpoints covering projects, graph, deps, paths, traceability
+- `graph/store.py` — `LocalGraphStore` (file-based) + `Neo4jGraphStore` (cloud)
+- `graph/queries.py` — Pure-Python BFS graph traversals
+- `analysis.py` — Orchestrator calling parser plugin + mapping application
+- `uploads.py` — Hardened ZIP extraction (path traversal, reserved names, size limits)
+- `plugins.py` — Dynamic plugin loader (parser + writer as env-configured callables)
+- `docs/INTEGRATION.md` — Detailed M1/M2/M3 interface contract
+
+**Key insight**: M3 left `backend/app/parsers/pipeline.py` and `backend/app/graph/builder.py` as stubs for us to implement.
+
+#### 3. M1 → M3 Parser Plugin (`backend/app/parsers/pipeline.py`)
+- Implements M3's parser plugin interface: `parse_project(*, project_id, repository_root, requirements_text) → ArtifactGraph`
+- Converts M1's `Entity/Relationship` → M3's `Node/Relationship` (uuid5 IDs, `PROJECT` type)
+- Maps entity types: REPOSITORY→PROJECT, FOLDER→PACKAGE, FILE→FILE, CLASS→CLASS, etc.
+- Maps relationship types: CONTAINS, DOCUMENTED_BY
+- Adds `reference` property to FUNCTION/CLASS nodes for manual mapping support
+- Parses REQUIREMENT nodes from Markdown SRS (handles `## REQ-001:`, `**REQ-002**:` formats)
+
+#### 4. M2 → M3 Neo4j Writer (`backend/app/graph/builder.py`)
+- Implements M3's writer plugin interface: `write_graph(*, graph, driver, database) → None`
+- Creates `Entity` label + optional extra labels (Class, Function, File, etc.)
+- Stores `properties_json` as JSON string per M3's read contract
+- Atomic transaction: PROJECT node first → batch UNWIND for remaining nodes → batch UNWIND for rels
+- Detects duplicate projects → raises `AppError(409)` before any write
+- Whitelists 10 relationship types to prevent Cypher injection
+- Uses `_ensure_schema()` to create uniqueness constraint idempotently
+
+#### 5. Infrastructure
+- `pytest.ini`: Added `pythonpath = . backend` so both `backend.*` and top-level packages resolve
+- `backend/requirements.txt`: Unified M1+M2+M3 deps (fastapi, pydantic, neo4j, httpx)
+- `backend/.env.example`: Combined config for both M2 standalone and M3 full server
+- `README.md`: Full architecture diagram, setup guide, API table, team breakdown
+- Cherry-picked M1/M2 files from feature branch onto main
+
+### Test Results
+```
+M1 unit tests (test_m1_parsers.py):    25/25 PASSED
+M1→M3 integration (test_parser_plugin.py): 20/20 PASSED
+Total:                                  45/45 PASSED ✅
+```
+
+### Git State
+- `feature/m1-m2-phase1`: M1+M2 standalone (backup)
+- `main`: Fully integrated M1+M2+M3, pushed to GitHub
+
+### Next Session
+- M4: Frontend React app (dependency graph visualization)
+- Enable Neo4j end-to-end once credentials are set up
+- Run M3's own test suite (`test_api.py`, `test_neo4j_adapter.py`)
+
+---
+
 ## Session 1 — 2026-09-10
 
 ### Environment Check
