@@ -1,4 +1,4 @@
-# Python
+# ─── Python ──────────────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *$py.class
@@ -8,35 +8,46 @@ __pycache__/
 dist/
 build/
 .eggs/
+
+# ─── Test & analysis artifacts ───────────────────────────────────────────────
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
 htmlcov/
 .coverage
 
-# Virtual environments
+# ─── Virtual environments ─────────────────────────────────────────────────────
 venv/
 env/
 .venv/
-.env
 
-# Project runtime directories
+# ─── Secrets / local config ───────────────────────────────────────────────────
+.env
+*.env.local
+
+# ─── Runtime directories (auto-created at startup, never commit) ─────────────
 uploads/
 extracted/
+backend/uploads/
+backend/extracted/
+.data/
 
-# IDE
+# ─── IDE ──────────────────────────────────────────────────────────────────────
 .vscode/
 .idea/
 *.sublime-project
 *.sublime-workspace
 
-# OS
+# ─── OS ───────────────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
+desktop.ini
 
-# Neo4j
+# ─── Neo4j local instance ─────────────────────────────────────────────────────
 neo4j/data/
 neo4j/logs/
+neo4j/import/
 
-# Logs
+# ─── Logs ─────────────────────────────────────────────────────────────────────
 *.log
+logs/

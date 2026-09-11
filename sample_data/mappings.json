@@ -1,6 +1,0 @@
-[
-  {
-    "requirement": "REQ-001",
-    "implementation": "controller.py::login_user"
-  }
-]

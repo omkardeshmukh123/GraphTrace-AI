@@ -8,57 +8,65 @@
 
 ```
 graphtrace-ai/
-├── backend/                            ← All Python backend code
-│   ├── artifact_intelligence/          ← M1: Parse raw artifacts → ArtifactGraph JSON
-│   │   ├── models.py                   ← Internal Entity/Relationship/ArtifactData models
-│   │   ├── zip_handler.py              ← ZIP extraction & file scanning
-│   │   ├── readme_parser.py            ← README.md parsing
+├── backend/
+│   ├── artifact_intelligence/          ← M1: Parse artifacts → ArtifactGraph
+│   │   ├── models.py                   ← Internal Entity/Relationship models
+│   │   ├── zip_handler.py              ← File scanning & inventory
+│   │   ├── readme_parser.py            ← README.md extraction
 │   │   ├── code_parser.py              ← Python/JS/TS class+function extraction
 │   │   └── analyzer.py                 ← M1 orchestrator
 │   │
-│   ├── knowledge_graph/                ← M2: Neo4j standalone adapter (local dev)
-│   │   ├── connection.py               ← Driver singleton
-│   │   ├── schema.py                   ← Constraints & indexes
-│   │   ├── builder.py                  ← Standalone write API
-│   │   └── queries.py                  ← Standalone query API
-│   │
-│   ├── app/                            ← M3: FastAPI Backend (primary server)
-│   │   ├── main.py                     ← App factory (CORS, error handlers, lifespan)
+│   ├── app/                            ← M3: Primary FastAPI server
+│   │   ├── main.py                     ← App factory (CORS, error handling, lifespan)
 │   │   ├── config.py                   ← Settings via GRAPHTRACE_* env vars
-│   │   ├── models.py                   ← Shared ArtifactGraph contract (M1↔M2↔M3)
-│   │   ├── analysis.py                 ← Analysis pipeline orchestrator
+│   │   ├── models.py                   ← ArtifactGraph contract (shared by all modules)
+│   │   ├── analysis.py                 ← Upload → parse → store pipeline
 │   │   ├── uploads.py                  ← Secure ZIP extraction
 │   │   ├── plugins.py                  ← Plugin loader (parser + graph_writer)
 │   │   ├── errors.py                   ← AppError class
 │   │   ├── api/routes.py               ← All REST endpoints
 │   │   ├── graph/
 │   │   │   ├── store.py                ← LocalGraphStore + Neo4jGraphStore
-│   │   │   ├── queries.py              ← Graph traversals (BFS, paths, traceability)
-│   │   │   └── builder.py             ← [M2] Neo4j writer plugin (our implementation)
+│   │   │   ├── queries.py              ← BFS traversals (deps, paths, traceability)
+│   │   │   └── builder.py             ← [M2] Neo4j writer plugin
 │   │   └── parsers/
-│   │       └── pipeline.py             ← [M1] Parser plugin (our implementation)
+│   │       └── pipeline.py             ← [M1] Parser plugin (M1 → M3 bridge)
 │   │
 │   ├── tests/
-│   │   ├── test_m1_parsers.py          ← 25 M1 unit tests (no Neo4j)
-│   │   ├── test_parser_plugin.py       ← 20 M1→M3 integration tests (no Neo4j)
-│   │   ├── test_m2_graph.py            ← M2 Neo4j integration tests (needs .env)
-│   │   ├── test_api.py                 ← M3 API tests (from Member 3)
+│   │   ├── test_m1_parsers.py          ← 25 M1 unit tests
+│   │   ├── test_parser_plugin.py       ← 20 M1→M3 integration tests
+│   │   ├── test_m2_graph.py            ← M2 Neo4j tests (needs .env)
+│   │   ├── test_api.py                 ← M3 API tests
 │   │   └── test_neo4j_adapter.py       ← M3 Neo4j adapter tests
 │   │
-│   ├── requirements.txt                ← Unified dependencies (M1+M2+M3)
-│   └── .env.example                    ← Copy to .env and fill credentials
+│   ├── requirements.txt                ← Unified deps (M1+M2+M3)
+│   └── .env.example                    ← Copy to .env and fill in credentials
 │
 ├── docs/
-│   ├── INTEGRATION.md                  ← M1/M2/M3 interface contracts
+│   ├── INTEGRATION.md                  ← M1/M2/M3 interface contracts & checklist
 │   ├── dev_diary.md                    ← Phase 1 development diary
 │   ├── GT_Modules.md                   ← Module & phase breakdown
 │   └── GraphTrace AI — Complete Project Master Specification.md
 │
-├── sample_project/                     ← Test repository (e-commerce app)
-├── sample_data/                        ← Demo graph JSON + sample SRS
-├── shared/artifact_schema.json         ← JSON Schema for ArtifactGraph
-├── scripts/                            ← Utility scripts
-└── pytest.ini
+├── sample_project/                     ← Test repo: e-commerce app (Python + JS)
+│   ├── src/
+│   │   ├── auth_service.py
+│   │   ├── order_service.py
+│   │   └── user_repository.py
+│   ├── frontend/
+│   │   └── payment_service.js
+│   └── README.md
+│
+├── scripts/
+│   ├── make_demo.py                    ← Generates .data/demo_graph.json + sample_project.zip
+│   └── generate_contract.py            ← Generates shared/artifact_schema.json
+│
+├── shared/
+│   └── artifact_schema.json            ← JSON Schema for ArtifactGraph (auto-generated)
+│
+├── .gitignore
+├── pytest.ini
+└── README.md
 ```
 
 ---
