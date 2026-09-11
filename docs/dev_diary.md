@@ -304,3 +304,86 @@ tests\test_parser_plugin.py ....................                         [100%]
 - **12/12** M2 live database tests gracefully skipped when offline
 - **Total**: 81 passed, 0 failures!
 
+---
+
+## 📅 Session 3 — Member 4 (Frontend & Visualization) Implementation
+_Date_: 2026-09-11  
+_Scope_: Complete implementation of the M4 React SPA and interactive graph explorer satisfying the Phase 1 milestone gate.
+
+### 🎯 Goals
+- Implement Member 4's frontend under `frontend/` as a clean, decoupled React + TypeScript application.
+- Connect M4 directly to M3's REST API endpoints via Vite development proxy.
+- Provide interactive force-directed graph exploration, project uploading, and dashboard visualization.
+- Satisfy Phase 1 Gate: *"Can we upload a project and visually explore its software structure?"*
+
+### 🛠️ Work Done
+
+#### 1. Architecture & Setup (`frontend/`)
+- Initialized Vite + React 19 + TypeScript SPA template.
+- Configured [vite.config.ts](file:///d:/GraphTrace-Ai/GraphTrace-AI/frontend/vite.config.ts) with reverse proxy: `/api` &rarr; `http://localhost:8000` (eliminates development CORS issues).
+- Added [frontend/__init__.py](file:///d:/GraphTrace-Ai/GraphTrace-AI/frontend/__init__.py) ownership banner and [frontend/README.md](file:///d:/GraphTrace-Ai/GraphTrace-AI/frontend/README.md) documentation.
+- Updated root [.gitignore](file:///d:/GraphTrace-Ai/GraphTrace-AI/.gitignore) to exclude `node_modules/` and `frontend/dist/`.
+
+#### 2. Design System & Theming ([src/index.css](file:///d:/GraphTrace-Ai/GraphTrace-AI/frontend/src/index.css))
+- Created dark-mode design system with curated typography, glowing accents, and glassmorphic card primitives.
+- Established semantic color tokens and node sizing in [src/nodeColors.ts](file:///d:/GraphTrace-Ai/GraphTrace-AI/frontend/src/nodeColors.ts):
+  - `PROJECT`: Indigo (`#818cf8`)
+  - `FILE`: Sky (`#60a5fa`)
+  - `PACKAGE`: Violet (`#a78bfa`)
+  - `CLASS`: Emerald (`#34d399`)
+  - `FUNCTION`: Pink (`#f472b6`)
+  - `METHOD`: Amber (`#fbbf24`)
+  - `REQUIREMENT`: Rose (`#f43f5e`)
+  - `DOCUMENT`: Teal (`#2dd4bf`)
+
+#### 3. API Client ([src/api.ts](file:///d:/GraphTrace-Ai/GraphTrace-AI/frontend/src/api.ts))
+- Implemented fully-typed fetch client matching M3's FastAPI routes and Pydantic schemas:
+  - `listProjects()`, `getProject(id)`, `uploadZip(file, mappingFile)`, `uploadJson(data)`, `getGraph(id)`, `getNode(id, nodeId)`, `getHealth()`.
+
+#### 4. UI Components & Pages
+- **[AppShell.tsx](file:///d:/GraphTrace-Ai/GraphTrace-AI/frontend/src/components/AppShell.tsx)**: Navigation header with real-time backend health check badge and navigation links.
+- **[Home.tsx](file:///d:/GraphTrace-Ai/GraphTrace-AI/frontend/src/pages/Home.tsx)**: Projects grid with node/edge counts, status badges, and "Upload Project" launcher.
+- **[Dashboard.tsx](file:///d:/GraphTrace-Ai/GraphTrace-AI/frontend/src/pages/Dashboard.tsx)**: Project metrics summary cards and distribution breakdown by entity type.
+- **[GraphExplorer.tsx](file:///d:/GraphTrace-Ai/GraphTrace-AI/frontend/src/pages/GraphExplorer.tsx)**: 2D Canvas force-directed graph visualizer using `react-force-graph-2d`. Includes live node type toggles, text search, hover tooltips, and camera controls.
+- **[NodeCard.tsx](file:///d:/GraphTrace-Ai/GraphTrace-AI/frontend/src/components/NodeCard.tsx)**: Inspector sidebar showing node properties and clickable adjacent neighbors for graph traversal.
+- **[UploadModal.tsx](file:///d:/GraphTrace-Ai/GraphTrace-AI/frontend/src/components/UploadModal.tsx)**: Modal with ZIP drag-and-drop file upload and JSON contract import.
+
+#### 5. Verification
+- `oxlint`: 0 errors, 0 warnings across 11 files.
+- `tsc -b && vite build`: Compiled cleanly with 0 TypeScript errors.
+
+---
+
+## 📅 Session 4 — Full Stack Verification & Live Launch
+_Date_: 2026-09-11  
+_Scope_: End-to-end integration testing, documentation consolidation, and background deployment.
+
+### 🎯 Goals
+- Validate entire system across M1, M2, M3, and M4.
+- Create comprehensive documentation walkthroughs for both frontend and backend.
+- Launch live development servers and verify proxy connectivity.
+
+### 🛠️ Work Done
+
+#### 1. Comprehensive Backend Walkthrough Documentation
+- Generated [docs/backend_walkthrough.md](file:///d:/GraphTrace-Ai/GraphTrace-AI/docs/backend_walkthrough.md) documenting architecture, member mappings, shared contracts, and all 11 REST API endpoints.
+- Generated [docs/frontend_walkthrough.md](file:///d:/GraphTrace-Ai/GraphTrace-AI/docs/frontend_walkthrough.md) documenting UI architecture and features.
+
+#### 2. End-to-End Live Integration Test
+- Automated integration test suite validating:
+  1. `GET /health` & `GET /health/ready`
+  2. `POST /projects/import` with demo JSON contract (12 nodes, 18 edges)
+  3. `GET /projects` and `GET /projects/{id}`
+  4. `GET /projects/{id}/graph` with node type filtering
+  5. `GET /dependencies/{id}` (downstream BFS) & `GET /paths` (shortest path)
+  6. `GET /requirements` and `GET /traceability/{id}`
+  7. `POST /projects/analyze` with live `sample_project.zip` processed through M1's `ArtifactAnalyzer` (48 nodes, 47 edges created)
+- **Result**: 100% of integration checks passed.
+
+#### 3. Live Server Launch
+- Configured local environment `.env` with `GRAPHTRACE_STORE=local` and `GRAPHTRACE_PARSER=backend.app.parsers.pipeline:parse_project`.
+- Started **FastAPI backend** on `http://127.0.0.1:8000` (PID 20564).
+- Started **Vite dev server** on `http://localhost:5173`.
+- Verified Vite proxy: `GET http://localhost:5173/api/health` &rarr; `200 OK`.
+- Seeded initial `Authentication demo` project for immediate exploration.
+
