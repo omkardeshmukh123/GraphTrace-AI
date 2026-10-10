@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GraphTrace AI — Brag</title>
+  <meta name="hf-duration" content="20" />
+  <meta name="hf-width" content="1920" />
+  <meta name="hf-height" content="1080" />
+  <meta name="hf-fps" content="60" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #080a0f;
+      --primary: #6366f1;
+      --primary-light: #818cf8;
+      --gradient-brand: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --border-glow: rgba(99, 102, 241, 0.4);
+      --node-project: #818cf8;
+      --node-file: #38bdf8;
+      --node-class: #34d399;
+      --node-fn: #f472b6;
+      --node-method: #fb923c;
+      --node-req: #f43f5e;
+      --success: #10b981;
+      --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    html, body {
+      width: 1920px; height: 1080px;
+      background: var(--bg);
+      font-family: var(--font-sans);
+      overflow: hidden;
+    }
+
+    .scene {
+      position: absolute;
+      inset: 0;
+      width: 1920px; height: 1080px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+    }
+
+    .gradient-text {
+      background: var(--gradient-brand);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* Scene 1 */
+    .hook-line {
+      font-size: 80px;
+      font-weight: 300;
+      letter-spacing: 0.02em;
+      color: var(--text-primary);
+      text-align: center;
+      opacity: 0;
+    }
+
+    /* Scene 2 */
+    .upload-modal {
+      width: 580px;
+      background: rgba(15, 18, 26, 0.95);
+      border: 1px solid var(--border-glow);
+      border-radius: 20px;
+      padding: 40px 44px;
+      box-shadow: 0 0 60px rgba(99,102,241,0.2), 0 24px 80px rgba(0,0,0,0.7);
+      opacity: 0;
+    }
+    .modal-title {
+      font-size: 18px; font-weight: 700;
+      color: var(--text-primary); margin-bottom: 24px;
+    }
+    .drop-zone {
+      border: 1.5px dashed var(--primary);
+      border-radius: 14px; padding: 32px 24px;
+      text-align: center; margin-bottom: 24px;
+      box-shadow: inset 0 0 24px rgba(99,102,241,0.12);
+    }
+    .zip-icon { font-size: 42px; margin-bottom: 10px; opacity: 0; transform: translateY(-20px); }
+    .zip-name {
+      font-family: var(--font-mono); font-size: 15px;
+      color: var(--primary-light); margin-bottom: 6px; opacity: 0;
+    }
+    .drop-hint { font-size: 13px; color: var(--text-secondary); }
+    .progress-wrap {
+      height: 6px; background: rgba(255,255,255,0.08);
+      border-radius: 999px; overflow: hidden;
+      margin-bottom: 16px; opacity: 0;
+    }
+    .progress-fill {
+      height: 100%; width: 0%;
+      background: var(--gradient-brand);
+      border-radius: 999px;
+    }
+    .parse-label {
+      font-family: var(--font-mono); font-size: 12px;
+      color: var(--text-secondary); opacity: 0; margin-bottom: 12px;
+    }
+    .success-row {
+      display: flex; align-items: center; gap: 10px; opacity: 0;
+    }
+    .check-mark {
+      width: 28px; height: 28px;
+      background: rgba(16,185,129,0.15);
+      border: 1.5px solid var(--success);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--success); font-size: 14px;
+    }
+    .success-metric {
+      font-family: var(--font-mono); font-size: 20px;
+      font-weight: 600; color: var(--success);
+    }
+    .success-label { font-size: 13px; color: var(--text-secondary); }
+
+    /* Scene 3 + 4 */
+    .graph-canvas, .trace-canvas {
+      position: relative; width: 1920px; height: 1080px;
+    }
+    .graph-overlay-stats {
+      position: absolute; top: 40px; left: 48px; opacity: 0;
+    }
+    .overlay-stat {
+      font-family: var(--font-mono); font-size: 13px;
+      color: var(--text-secondary); line-height: 1.8;
+    }
+    .overlay-stat span { color: var(--primary-light); font-weight: 600; }
+    .graph-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .node-circle { opacity: 0; }
+    .node-label { opacity: 0; fill: var(--text-secondary); font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+    .graph-edge { opacity: 0; stroke-width: 1.5; }
+
+    /* Scene 4 */
+    .trace-overlay {
+      position: absolute; bottom: 60px; left: 50%;
+      transform: translateX(-50%); text-align: center; opacity: 0;
+    }
+    .trace-label-main { font-size: 22px; font-weight: 600; color: var(--text-primary); }
+    .trace-label-sub { font-size: 15px; color: var(--text-secondary); margin-top: 6px; font-style: italic; }
+
+    /* Scene 5 */
+    #scene-5 { flex-direction: column; gap: 20px; }
+    .outro-glow {
+      position: absolute;
+      width: 600px; height: 600px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(99,102,241,0.18) 0%, transparent 70%);
+      opacity: 0;
+    }
+    .outro-name {
+      font-size: 100px; font-weight: 800;
+      letter-spacing: -0.02em; opacity: 0;
+      position: relative; z-index: 1;
+    }
+    .outro-tagline {
+      font-size: 22px; font-weight: 400;
+      color: var(--text-secondary); letter-spacing: 0.12em;
+      text-transform: uppercase; opacity: 0;
+      position: relative; z-index: 1;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- AUDIO -->
+  <!-- Music bed: vol-12 (polished/cinematic), 0.28 volume -->
+  <!-- beat-locked per cues from happy-beats-business-moves-vol-12 preset -->
+  <audio id="bg-music"
+    data-start="0" data-duration="20"
+    data-track-index="10" data-volume="0.28"
+    src="assets/music/happy-beats-business-moves-vol-12-by-ende-dot-app.mp3">
+  </audio>
+
+  <!-- Scene 2: file drop + confirm SFX -->
+  <audio id="sfx-drop" data-start="2.1" data-duration="1" data-track-index="11" data-volume="0.60" src="assets/sfx/interface/drop_001.ogg"></audio>
+  <audio id="sfx-confirm" data-start="3.85" data-duration="1" data-track-index="12" data-volume="0.55" src="assets/sfx/interface/drop_002.ogg"></audio>
+
+  <!-- Scene 3: node arrival ticks — beat-grid: 5.34, 6.00, 6.56, 7.09, 7.64, 8.19 -->
+  <audio id="sfx-n1" data-start="5.34" data-duration="0.5" data-track-index="13" data-volume="0.35" src="assets/sfx/ui/click1.ogg"></audio>
+  <audio id="sfx-n2" data-start="6.00" data-duration="0.5" data-track-index="14" data-volume="0.32" src="assets/sfx/ui/click1.ogg"></audio>
+  <audio id="sfx-n3" data-start="6.56" data-duration="0.5" data-track-index="15" data-volume="0.30" src="assets/sfx/ui/click1.ogg"></audio>
+  <audio id="sfx-n4" data-start="7.09" data-duration="0.5" data-track-index="16" data-volume="0.28" src="assets/sfx/ui/click1.ogg"></audio>
+  <audio id="sfx-n5" data-start="7.64" data-duration="0.5" data-track-index="17" data-volume="0.25" src="assets/sfx/ui/click1.ogg"></audio>
+  <audio id="sfx-n6" data-start="8.19" data-duration="0.5" data-track-index="18" data-volume="0.22" src="assets/sfx/ui/click1.ogg"></audio>
+
+  <!-- Scene 4: click + 4 path hops — beat-locked: 10.93s strong cue -->
+  <audio id="sfx-click" data-start="10.15" data-duration="0.5" data-track-index="19" data-volume="0.65" src="assets/sfx/ui/mouseclick1.ogg"></audio>
+  <audio id="sfx-h1" data-start="10.70" data-duration="0.8" data-track-index="20" data-volume="0.40" src="assets/sfx/impact/impactGlass_light_001.ogg"></audio>
+  <audio id="sfx-h2" data-start="11.20" data-duration="0.8" data-track-index="21" data-volume="0.38" src="assets/sfx/impact/impactGlass_light_001.ogg"></audio>
+  <audio id="sfx-h3" data-start="11.70" data-duration="0.8" data-track-index="22" data-volume="0.36" src="assets/sfx/impact/impactGlass_light_001.ogg"></audio>
+  <audio id="sfx-h4" data-start="12.20" data-duration="0.8" data-track-index="23" data-volume="0.34" src="assets/sfx/impact/impactGlass_light_001.ogg"></audio>
+
+  <!-- Scene 5: logo hit — beat-locked: 17.47s (strong cue 0.99) -->
+  <audio id="sfx-logo" data-start="17.40" data-duration="2" data-track-index="24" data-volume="0.55" src="assets/sfx/impact/impactBell_heavy_000.ogg"></audio>
+
+
+  <!-- ═══ SCENE 1: HOOK (0–2s) ═══ -->
+  <div id="scene-1" class="scene"
+    data-start="0" data-duration="2"
+    data-transition-in="fade" data-transition-in-duration="0.4"
+    data-transition-out="fade" data-transition-out-duration="0.6">
+    <p class="hook-line"
+      data-start="0" data-duration="2"
+      data-animation="fade-in" data-animation-duration="0.4" data-animation-easing="ease-out">
+      What does this code actually do?
+    </p>
+  </div>
+
+
+  <!-- ═══ SCENE 2: UPLOAD (2–5s) ═══ -->
+  <div id="scene-2" class="scene"
+    data-start="2" data-duration="3"
+    data-transition-in="fade" data-transition-in-duration="0.6"
+    data-transition-out="fade" data-transition-out-duration="0.6">
+    <div class="upload-modal"
+      data-start="2" data-animation="fade-up" data-animation-duration="0.5" data-animation-easing="ease-out">
+      <div class="modal-title">Upload Repository</div>
+      <div class="drop-zone">
+        <div class="zip-icon"
+          data-start="2.2" data-animation="fade-down" data-animation-duration="0.35" data-animation-easing="ease-out">
+          📦
+        </div>
+        <div class="zip-name"
+          data-start="2.55" data-animation="fade-in" data-animation-duration="0.3">
+          my-project.zip
+        </div>
+        <div class="drop-hint">Drag repository ZIP here to analyze</div>
+      </div>
+      <div class="parse-label"
+        data-start="2.75" data-animation="fade-in" data-animation-duration="0.25">
+        Parsing AST entities…
+      </div>
+      <div class="progress-wrap"
+        data-start="2.75" data-animation="fade-in" data-animation-duration="0.25">
+        <div class="progress-fill"
+          data-start="2.85" data-animation="width-to-100" data-animation-duration="0.95" data-animation-easing="ease-in-out">
+        </div>
+      </div>
+      <div class="success-row"
+        data-start="3.85" data-animation="fade-in" data-animation-duration="0.35">
+        <div class="check-mark">✓</div>
+        <div class="success-metric">&lt; 1.2s</div>
+        <div class="success-label">· 247 entities indexed</div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ═══ SCENE 3: GRAPH REVEAL (5–10s) ═══ -->
+  <!-- Centerpiece. Nodes radiate in 6 beat-locked waves. -->
+  <!-- Graph constellation settles ~beat-locked: 8.74s (strong cue 0.99) -->
+  <div id="scene-3" class="scene"
+    data-start="5" data-duration="5"
+    data-transition-in="slide-right" data-transition-in-duration="0.5"
+    data-transition-out="fade" data-transition-out-duration="0.6">
+    <div class="graph-canvas">
+      <div class="graph-overlay-stats"
+        data-start="8.85" data-animation="fade-in" data-animation-duration="0.6">
+        <div class="overlay-stat"><span>247</span> entities indexed</div>
+        <div class="overlay-stat"><span>189</span> relationships mapped</div>
+      </div>
+      <svg class="graph-svg" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <filter id="gf-p"><feGaussianBlur stdDeviation="8" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          <filter id="gf-c"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          <filter id="gf-f"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          <filter id="gf-r"><feGaussianBlur stdDeviation="12" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        </defs>
+        <!-- Edges wave 1 — 5.34s -->
+        <line class="graph-edge" x1="960" y1="540" x2="760" y2="340" stroke="#818cf8" data-start="5.34" data-animation="fade-in" data-animation-duration="0.4"/>
+        <line class="graph-edge" x1="960" y1="540" x2="1160" y2="340" stroke="#38bdf8" data-start="5.34" data-animation="fade-in" data-animation-duration="0.4"/>
+        <line class="graph-edge" x1="960" y1="540" x2="1220" y2="580" stroke="#34d399" data-start="5.34" data-animation="fade-in" data-animation-duration="0.4"/>
+        <line class="graph-edge" x1="960" y1="540" x2="700" y2="620" stroke="#f472b6" data-start="5.34" data-animation="fade-in" data-animation-duration="0.4"/>
+        <!-- Edges wave 2 — 6.00s -->
+        <line class="graph-edge" x1="760" y1="340" x2="580" y2="200" stroke="#34d399" data-start="6.00" data-animation="fade-in" data-animation-duration="0.4"/>
+        <line class="graph-edge" x1="760" y1="340" x2="900" y2="180" stroke="#f472b6" data-start="6.00" data-animation="fade-in" data-animation-duration="0.4"/>
+        <line class="graph-edge" x1="1160" y1="340" x2="1340" y2="200" stroke="#fb923c" data-start="6.00" data-animation="fade-in" data-animation-duration="0.4"/>
+        <line class="graph-edge" x1="1160" y1="340" x2="1060" y2="180" stroke="#38bdf8" data-start="6.00" data-animation="fade-in" data-animation-duration="0.4"/>
+        <!-- Edges wave 3 — 6.56s -->
+        <line class="graph-edge" x1="1220" y1="580" x2="1440" y2="460" stroke="#f472b6" data-start="6.56" data-animation="fade-in" data-animation-duration="0.4"/>
+        <line class="graph-edge" x1="1220" y1="580" x2="1380" y2="760" stroke="#34d399" data-start="6.56" data-animation="fade-in" data-animation-duration="0.4"/>
+        <line class="graph-edge" x1="700" y1="620" x2="520" y2="480" stroke="#38bdf8" data-start="6.56" data-animation="fade-in" data-animation-duration="0.4"/>
+        <line class="graph-edge" x1="700" y1="620" x2="580" y2="820" stroke="#fb923c" data-start="6.56" data-animation="fade-in" data-animation-duration="0.4"/>
+        <!-- Edges wave 4 — 7.09s -->
+        <line class="graph-edge" x1="580" y1="200" x2="420" y2="120" stroke="#f43f5e" data-start="7.09" data-animation="fade-in" data-animation-duration="0.4"/>
+        <line class="graph-edge" x1="1340" y1="200" x2="1500" y2="120" stroke="#818cf8" data-start="7.09" data-animation="fade-in" data-animation-duration="0.4"/>
+        <line class="graph-edge" x1="1440" y1="460" x2="1640" y2="380" stroke="#38bdf8" data-start="7.09" data-animation="fade-in" data-animation-duration="0.4"/>
+        <line class="graph-edge" x1="520" y1="480" x2="320" y2="400" stroke="#34d399" data-start="7.09" data-animation="fade-in" data-animation-duration="0.4"/>
+        <!-- Edges wave 5 — 7.64s -->
+        <line class="graph-edge" x1="1380" y1="760" x2="1560" y2="880" stroke="#f472b6" data-start="7.64" data-animation="fade-in" data-animation-duration="0.4"/>
+        <line class="graph-edge" x1="580" y1="820" x2="400" y2="920" stroke="#fb923c" data-start="7.64" data-animation="fade-in" data-animation-duration="0.4"/>
+        <line class="graph-edge" x1="960" y1="540" x2="960" y2="800" stroke="#38bdf8" data-start="7.64" data-animation="fade-in" data-animation-duration="0.4"/>
+        <line class="graph-edge" x1="960" y1="800" x2="1100" y2="920" stroke="#34d399" data-start="7.64" data-animation="fade-in" data-animation-duration="0.4"/>
+
+        <!-- Nodes wave 0: center — beat-locked: 5.34s -->
+        <circle class="node-circle" cx="960" cy="540" r="28" fill="#818cf8" filter="url(#gf-r)"
+          data-start="5.34" data-animation="scale-in" data-animation-duration="0.4" data-animation-easing="back-out"/>
+        <text class="node-label" x="960" y="590" text-anchor="middle"
+          data-start="5.34" data-animation="fade-in" data-animation-duration="0.3">my-project</text>
+
+        <!-- Nodes wave 1 — beat-grid: 5.34s -->
+        <circle class="node-circle" cx="760" cy="340" r="20" fill="#818cf8" filter="url(#gf-p)"
+          data-start="5.34" data-animation="scale-in" data-animation-duration="0.4" data-animation-easing="back-out"/>
+        <text class="node-label" x="760" y="320" text-anchor="middle"
+          data-start="5.34" data-animation="fade-in" data-animation-duration="0.3">backend</text>
+        <circle class="node-circle" cx="1160" cy="340" r="20" fill="#38bdf8" filter="url(#gf-f)"
+          data-start="5.34" data-animation="scale-in" data-animation-duration="0.4" data-animation-easing="back-out"/>
+        <text class="node-label" x="1160" y="320" text-anchor="middle"
+          data-start="5.34" data-animation="fade-in" data-animation-duration="0.3">frontend</text>
+        <circle class="node-circle" cx="1220" cy="580" r="18" fill="#34d399" filter="url(#gf-c)"
+          data-start="5.34" data-animation="scale-in" data-animation-duration="0.4" data-animation-easing="back-out"/>
+        <text class="node-label" x="1258" y="583" text-anchor="start"
+          data-start="5.34" data-animation="fade-in" data-animation-duration="0.3">AppShell</text>
+        <circle class="node-circle" cx="700" cy="620" r="18" fill="#f472b6" filter="url(#gf-f)"
+          data-start="5.34" data-animation="scale-in" data-animation-duration="0.4" data-animation-easing="back-out"/>
+        <text class="node-label" x="662" y="623" text-anchor="end"
+          data-start="5.34" data-animation="fade-in" data-animation-duration="0.3">analyze()</text>
+
+        <!-- Nodes wave 2 — beat-grid: 6.00s -->
+        <circle class="node-circle" cx="580" cy="200" r="16" fill="#34d399" filter="url(#gf-c)"
+          data-start="6.00" data-animation="scale-in" data-animation-duration="0.35" data-animation-easing="back-out"/>
+        <text class="node-label" x="580" y="182" text-anchor="middle"
+          data-start="6.00" data-animation="fade-in" data-animation-duration="0.3">ArtifactGraph</text>
+        <circle class="node-circle" cx="900" cy="180" r="14" fill="#f472b6" filter="url(#gf-f)"
+          data-start="6.00" data-animation="scale-in" data-animation-duration="0.35" data-animation-easing="back-out"/>
+        <text class="node-label" x="900" y="162" text-anchor="middle"
+          data-start="6.00" data-animation="fade-in" data-animation-duration="0.3">parse_code()</text>
+        <circle class="node-circle" cx="1340" cy="200" r="16" fill="#fb923c" filter="url(#gf-p)"
+          data-start="6.00" data-animation="scale-in" data-animation-duration="0.35" data-animation-easing="back-out"/>
+        <text class="node-label" x="1340" y="182" text-anchor="middle"
+          data-start="6.00" data-animation="fade-in" data-animation-duration="0.3">GraphStore</text>
+        <circle class="node-circle" cx="1060" cy="180" r="14" fill="#38bdf8" filter="url(#gf-f)"
+          data-start="6.00" data-animation="scale-in" data-animation-duration="0.35" data-animation-easing="back-out"/>
+        <text class="node-label" x="1060" y="162" text-anchor="middle"
+          data-start="6.00" data-animation="fade-in" data-animation-duration="0.3">api.ts</text>
+
+        <!-- Nodes wave 3 — beat-grid: 6.56s -->
+        <circle class="node-circle" cx="1440" cy="460" r="14" fill="#f472b6" filter="url(#gf-f)"
+          data-start="6.56" data-animation="scale-in" data-animation-duration="0.3" data-animation-easing="back-out"/>
+        <text class="node-label" x="1478" y="462" text-anchor="start"
+          data-start="6.56" data-animation="fade-in" data-animation-duration="0.3">validate()</text>
+        <circle class="node-circle" cx="1380" cy="760" r="14" fill="#34d399" filter="url(#gf-c)"
+          data-start="6.56" data-animation="scale-in" data-animation-duration="0.3" data-animation-easing="back-out"/>
+        <text class="node-label" x="1418" y="762" text-anchor="start"
+          data-start="6.56" data-animation="fade-in" data-animation-duration="0.3">Dashboard</text>
+        <circle class="node-circle" cx="520" cy="480" r="14" fill="#38bdf8" filter="url(#gf-f)"
+          data-start="6.56" data-animation="scale-in" data-animation-duration="0.3" data-animation-easing="back-out"/>
+        <text class="node-label" x="482" y="482" text-anchor="end"
+          data-start="6.56" data-animation="fade-in" data-animation-duration="0.3">main.py</text>
+        <circle class="node-circle" cx="580" cy="820" r="14" fill="#fb923c" filter="url(#gf-p)"
+          data-start="6.56" data-animation="scale-in" data-animation-duration="0.3" data-animation-easing="back-out"/>
+        <text class="node-label" x="542" y="822" text-anchor="end"
+          data-start="6.56" data-animation="fade-in" data-animation-duration="0.3">build_graph()</text>
+
+        <!-- Nodes wave 4 — beat-grid: 7.09s -->
+        <circle class="node-circle" cx="420" cy="120" r="13" fill="#f43f5e" filter="url(#gf-f)"
+          data-start="7.09" data-animation="scale-in" data-animation-duration="0.3" data-animation-easing="back-out"/>
+        <text class="node-label" x="420" y="102" text-anchor="middle"
+          data-start="7.09" data-animation="fade-in" data-animation-duration="0.3">REQ-001</text>
+        <circle class="node-circle" cx="1500" cy="120" r="13" fill="#818cf8" filter="url(#gf-p)"
+          data-start="7.09" data-animation="scale-in" data-animation-duration="0.3" data-animation-easing="back-out"/>
+        <text class="node-label" x="1500" y="102" text-anchor="middle"
+          data-start="7.09" data-animation="fade-in" data-animation-duration="0.3">GraphExplorer</text>
+        <circle class="node-circle" cx="1640" cy="380" r="12" fill="#38bdf8" filter="url(#gf-f)"
+          data-start="7.09" data-animation="scale-in" data-animation-duration="0.3" data-animation-easing="back-out"/>
+        <text class="node-label" x="1678" y="382" text-anchor="start"
+          data-start="7.09" data-animation="fade-in" data-animation-duration="0.3">queries.py</text>
+        <circle class="node-circle" cx="320" cy="400" r="12" fill="#34d399" filter="url(#gf-c)"
+          data-start="7.09" data-animation="scale-in" data-animation-duration="0.3" data-animation-easing="back-out"/>
+        <text class="node-label" x="282" y="402" text-anchor="end"
+          data-start="7.09" data-animation="fade-in" data-animation-duration="0.3">CodeParser</text>
+
+        <!-- Nodes wave 5 — beat-grid: 7.64s -->
+        <circle class="node-circle" cx="1560" cy="880" r="11" fill="#f472b6" filter="url(#gf-f)"
+          data-start="7.64" data-animation="scale-in" data-animation-duration="0.28" data-animation-easing="back-out"/>
+        <text class="node-label" x="1598" y="882" text-anchor="start"
+          data-start="7.64" data-animation="fade-in" data-animation-duration="0.25">traceability()</text>
+        <circle class="node-circle" cx="400" cy="920" r="11" fill="#fb923c" filter="url(#gf-p)"
+          data-start="7.64" data-animation="scale-in" data-animation-duration="0.28" data-animation-easing="back-out"/>
+        <text class="node-label" x="362" y="922" text-anchor="end"
+          data-start="7.64" data-animation="fade-in" data-animation-duration="0.25">bfs_deps()</text>
+
+        <!-- Nodes wave 6 — beat-grid: 8.19s -->
+        <circle class="node-circle" cx="960" cy="800" r="13" fill="#38bdf8" filter="url(#gf-f)"
+          data-start="8.19" data-animation="scale-in" data-animation-duration="0.28" data-animation-easing="back-out"/>
+        <text class="node-label" x="960" y="838" text-anchor="middle"
+          data-start="8.19" data-animation="fade-in" data-animation-duration="0.25">models.py</text>
+        <circle class="node-circle" cx="1100" cy="920" r="11" fill="#34d399" filter="url(#gf-c)"
+          data-start="8.19" data-animation="scale-in" data-animation-duration="0.28" data-animation-easing="back-out"/>
+        <text class="node-label" x="1100" y="958" text-anchor="middle"
+          data-start="8.19" data-animation="fade-in" data-animation-duration="0.25">Neo4jStore</text>
+        <circle class="node-circle" cx="200" cy="650" r="10" fill="#f43f5e" filter="url(#gf-f)"
+          data-start="8.19" data-animation="scale-in" data-animation-duration="0.25" data-animation-easing="back-out"/>
+        <circle class="node-circle" cx="1750" cy="600" r="10" fill="#f472b6" filter="url(#gf-f)"
+          data-start="8.19" data-animation="scale-in" data-animation-duration="0.25" data-animation-easing="back-out"/>
+        <circle class="node-circle" cx="1800" cy="780" r="9" fill="#818cf8" filter="url(#gf-p)"
+          data-start="8.19" data-animation="scale-in" data-animation-duration="0.25" data-animation-easing="back-out"/>
+        <circle class="node-circle" cx="140" cy="820" r="9" fill="#34d399" filter="url(#gf-c)"
+          data-start="8.19" data-animation="scale-in" data-animation-duration="0.25" data-animation-easing="back-out"/>
+      </svg>
+    </div>
+  </div>
+
+
+  <!-- ═══ SCENE 4: TRACEABILITY (10–15s) ═══ -->
+  <!-- beat-locked: traceability path starts 10.70s; click at ~10.93s strong cue 0.97 -->
+  <div id="scene-4" class="scene"
+    data-start="10" data-duration="5"
+    data-transition-in="fade" data-transition-in-duration="0.6"
+    data-transition-out="fade" data-transition-out-duration="0.7">
+    <div class="trace-canvas">
+      <svg class="graph-svg" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <filter id="gf-req"><feGaussianBlur stdDeviation="12" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          <filter id="gf-active"><feGaussianBlur stdDeviation="8" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          <linearGradient id="trace-grad" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="#6366f1"/>
+            <stop offset="50%" stop-color="#a855f7"/>
+            <stop offset="100%" stop-color="#ec4899"/>
+          </linearGradient>
+        </defs>
+        <!-- Dimmed background nodes -->
+        <circle cx="400" cy="200" r="10" fill="#38bdf8" opacity="0" data-start="10" data-animation="fade-in" data-animation-duration="0.4" style="--target-opacity:0.15"/>
+        <circle cx="1600" cy="250" r="12" fill="#34d399" opacity="0" data-start="10" data-animation="fade-in" data-animation-duration="0.4" style="--target-opacity:0.15"/>
+        <circle cx="200" cy="700" r="9" fill="#fb923c" opacity="0" data-start="10" data-animation="fade-in" data-animation-duration="0.4" style="--target-opacity:0.15"/>
+        <circle cx="1750" cy="800" r="10" fill="#f472b6" opacity="0" data-start="10" data-animation="fade-in" data-animation-duration="0.4" style="--target-opacity:0.15"/>
+        <circle cx="300" cy="400" r="11" fill="#818cf8" opacity="0" data-start="10" data-animation="fade-in" data-animation-duration="0.4" style="--target-opacity:0.15"/>
+        <circle cx="1650" cy="600" r="9" fill="#38bdf8" opacity="0" data-start="10" data-animation="fade-in" data-animation-duration="0.4" style="--target-opacity:0.15"/>
+
+        <!-- Click pulse ring on REQ node — beat-locked: 10.93s -->
+        <circle cx="360" cy="440" r="45" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2" opacity="0"
+          data-start="10.93" data-animation="scale-from-0-fade-out" data-animation-duration="0.7" data-animation-easing="ease-out"/>
+
+        <!-- REQ-023 node -->
+        <circle cx="360" cy="440" r="26" fill="#f43f5e" filter="url(#gf-req)"
+          data-start="10" data-animation="scale-in" data-animation-duration="0.5" data-animation-easing="back-out" opacity="0"/>
+        <text x="360" y="487" text-anchor="middle" fill="#f8fafc" font-family="JetBrains Mono,monospace" font-size="13" font-weight="600"
+          data-start="10" data-animation="fade-in" data-animation-duration="0.4" opacity="0">REQ-023</text>
+        <text x="360" y="503" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="10"
+          data-start="10" data-animation="fade-in" data-animation-duration="0.4" opacity="0">User Authentication</text>
+
+        <!-- Trace edges — sequential hop reveals -->
+        <line x1="386" y1="440" x2="660" y2="440" stroke="url(#trace-grad)" stroke-width="3"
+          stroke-dasharray="1000" stroke-dashoffset="1000" opacity="0"
+          data-start="10.70" data-animation="stroke-draw" data-animation-duration="0.4" data-animation-easing="ease-out"/>
+        <line x1="700" y1="440" x2="980" y2="580" stroke="url(#trace-grad)" stroke-width="3"
+          stroke-dasharray="1000" stroke-dashoffset="1000" opacity="0"
+          data-start="11.20" data-animation="stroke-draw" data-animation-duration="0.4" data-animation-easing="ease-out"/>
+        <line x1="1020" y1="580" x2="1300" y2="700" stroke="url(#trace-grad)" stroke-width="3"
+          stroke-dasharray="1000" stroke-dashoffset="1000" opacity="0"
+          data-start="11.70" data-animation="stroke-draw" data-animation-duration="0.4" data-animation-easing="ease-out"/>
+        <line x1="1340" y1="700" x2="1600" y2="780" stroke="url(#trace-grad)" stroke-width="3"
+          stroke-dasharray="1000" stroke-dashoffset="1000" opacity="0"
+          data-start="12.20" data-animation="stroke-draw" data-animation-duration="0.4" data-animation-easing="ease-out"/>
+
+        <!-- Traced nodes -->
+        <circle cx="700" cy="440" r="22" fill="#34d399" filter="url(#gf-active)" opacity="0"
+          data-start="10.70" data-animation="scale-in" data-animation-duration="0.4" data-animation-easing="back-out"/>
+        <text x="700" y="477" text-anchor="middle" fill="#f8fafc" font-family="JetBrains Mono,monospace" font-size="12" font-weight="600"
+          data-start="10.70" data-animation="fade-in" data-animation-duration="0.3" opacity="0">AuthService</text>
+
+        <circle cx="1020" cy="580" r="20" fill="#f472b6" filter="url(#gf-active)" opacity="0"
+          data-start="11.20" data-animation="scale-in" data-animation-duration="0.4" data-animation-easing="back-out"/>
+        <text x="1020" y="617" text-anchor="middle" fill="#f8fafc" font-family="JetBrains Mono,monospace" font-size="12" font-weight="600"
+          data-start="11.20" data-animation="fade-in" data-animation-duration="0.3" opacity="0">validate_token()</text>
+
+        <circle cx="1340" cy="700" r="18" fill="#38bdf8" filter="url(#gf-active)" opacity="0"
+          data-start="11.70" data-animation="scale-in" data-animation-duration="0.4" data-animation-easing="back-out"/>
+        <text x="1340" y="737" text-anchor="middle" fill="#f8fafc" font-family="JetBrains Mono,monospace" font-size="12" font-weight="600"
+          data-start="11.70" data-animation="fade-in" data-animation-duration="0.3" opacity="0">user_repository.py</text>
+
+        <circle cx="1620" cy="780" r="16" fill="#fb923c" filter="url(#gf-active)" opacity="0"
+          data-start="12.20" data-animation="scale-in" data-animation-duration="0.4" data-animation-easing="back-out"/>
+        <text x="1620" y="817" text-anchor="middle" fill="#f8fafc" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600"
+          data-start="12.20" data-animation="fade-in" data-animation-duration="0.3" opacity="0">get_user_by_id()</text>
+      </svg>
+      <div class="trace-overlay"
+        data-start="12.30" data-animation="fade-in" data-animation-duration="0.6">
+        <div class="trace-label-main">Requirement → Implementation</div>
+        <div class="trace-label-sub">Traced in one click.</div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ═══ SCENE 5: OUTRO (15–20s) ═══ -->
+  <!-- beat-locked: name appears at 17.47s (strong cue 0.99) -->
+  <div id="scene-5" class="scene"
+    data-start="15" data-duration="5"
+    data-transition-in="fade" data-transition-in-duration="0.7"
+    data-transition-out="fade" data-transition-out-duration="0.5">
+    <div class="outro-glow"
+      data-start="17.47" data-animation="scale-in-fade-in"
+      data-animation-duration="1.2" data-animation-easing="ease-out">
+    </div>
+    <div class="outro-name gradient-text"
+      data-start="17.47" data-animation="fade-in"
+      data-animation-duration="0.5" data-animation-easing="ease-out">
+      GraphTrace AI
+    </div>
+    <div class="outro-tagline"
+      data-start="17.97" data-animation="fade-in"
+      data-animation-duration="0.5" data-animation-easing="ease-out">
+      Explainable Software Engineering Intelligence
+    </div>
+  </div>
+
+
+<script>
+/* ============================================================
+   GraphTrace AI — Brag Film Runtime  v1.0
+   Drives all data-start / data-animation declarative attrs
+   ============================================================ */
+(function () {
+  'use strict';
+
+  const DURATION = 20;          // total film seconds
+
+  /* ── Easing helpers ─────────────────────────────────────── */
+  const ease = {
+    linear:   t => t,
+    easeOut:  t => 1 - Math.pow(1 - t, 3),
+    easeIn:   t => Math.pow(t, 3),
+    backOut:  t => { const c1=1.70158,c3=c1+1; return 1+c3*Math.pow(t-1,3)+c1*Math.pow(t-1,2); },
+    easeInOut:t => t<.5 ? 4*t*t*t : 1-Math.pow(-2*t+2,3)/2,
+  };
+  function getEase(name) {
+    const map = { 'ease-out':'easeOut','ease-in':'easeIn','back-out':'backOut','ease-in-out':'easeInOut','linear':'linear' };
+    return ease[map[name] || 'easeOut'];
+  }
+
+  /* ── Scene registry ─────────────────────────────────────── */
+  const scenes = [];
+  document.querySelectorAll('.scene').forEach(el => {
+    const s = parseFloat(el.dataset.start   || 0);
+    const d = parseFloat(el.dataset.duration || 5);
+    const tiIn  = parseFloat(el.dataset.transitionInDuration  || 0.5);
+    const tiOut = parseFloat(el.dataset.transitionOutDuration || 0.5);
+    scenes.push({ el, start: s, end: s + d, tiIn, tiOut });
+  });
+
+  /* ── Element animation registry ────────────────────────── */
+  const anims = [];
+  document.querySelectorAll('[data-animation]').forEach(el => {
+    const type   = el.dataset.animation;
+    const start  = parseFloat(el.dataset.start || 0);
+    const dur    = parseFloat(el.dataset.animationDuration || 0.5);
+    const easing = getEase(el.dataset.animationEasing || 'ease-out');
+    const targetOpacity = parseFloat(
+      el.style.getPropertyValue('--target-opacity') || 1
+    );
+    anims.push({ el, type, start, end: start + dur, dur, easing, targetOpacity, done: false });
+  });
+
+  /* ── State ──────────────────────────────────────────────── */
+  let playing   = false;
+  let startWall = null;   // performance.now() at play start
+  let offsetT   = 0;      // time already elapsed before last pause
+  let rafId     = null;
+
+  /* ── Initial state: hide everything ────────────────────── */
+  scenes.forEach(s => { s.el.style.opacity = 0; s.el.style.display = 'flex'; });
+  anims.forEach(a => {
+    if (a.type === 'scale-in' || a.type === 'scale-in-fade-in') {
+      a.el.style.opacity     = 0;
+      a.el.style.transform   = 'scale(0)';
+    } else if (a.type === 'fade-in') {
+      a.el.style.opacity = 0;
+    } else if (a.type === 'stroke-draw') {
+      a.el.style.opacity = 0;
+    } else if (a.type === 'scale-from-0-fade-out') {
+      a.el.style.opacity   = 0;
+      a.el.style.transform = 'scale(0)';
+    }
+  });
+
+  /* ── Core tick ──────────────────────────────────────────── */
+  function tick() {
+    if (!playing) return;
+    const now  = performance.now();
+    const t    = Math.min(offsetT + (now - startWall) / 1000, DURATION);
+    render(t);
+    if (t >= DURATION) { playing = false; seekBar.value = 100; return; }
+    rafId = requestAnimationFrame(tick);
+  }
+
+  function render(t) {
+    /* progress HUD */
+    seekBar.value = (t / DURATION) * 100;
+    timeLabel.textContent = t.toFixed(1) + 's';
+
+    /* scenes */
+    scenes.forEach(s => {
+      if (t < s.start - s.tiIn || t > s.end + s.tiOut) {
+        s.el.style.opacity = 0;
+        return;
+      }
+      let op = 1;
+      if (t < s.start) {
+        const p = (t - (s.start - s.tiIn)) / s.tiIn;
+        op = Math.max(0, Math.min(1, ease.easeOut(p)));
+      } else if (t > s.end) {
+        const p = (t - s.end) / s.tiOut;
+        op = Math.max(0, Math.min(1, 1 - ease.easeIn(p)));
+      }
+      s.el.style.opacity = op;
+    });
+
+    /* element animations */
+    anims.forEach(a => {
+      if (t < a.start) return;
+      const p = Math.min(1, (t - a.start) / a.dur);
+      const e = a.easing(p);
+
+      switch (a.type) {
+        case 'fade-in':
+          a.el.style.opacity = e * a.targetOpacity;
+          break;
+        case 'scale-in':
+          a.el.style.opacity   = e;
+          a.el.style.transform = `scale(${e})`;
+          break;
+        case 'scale-in-fade-in':
+          a.el.style.opacity   = e;
+          a.el.style.transform = `scale(${0.5 + 0.5 * e})`;
+          break;
+        case 'scale-from-0-fade-out': {
+          // pulse ring: scale from 0→2 while fading out
+          const scale = 1 + e;
+          const op    = 1 - e;
+          a.el.style.opacity   = op;
+          a.el.style.transform = `scale(${scale})`;
+          break;
+        }
+        case 'stroke-draw': {
+          const dashLen = parseFloat(a.el.getAttribute('stroke-dasharray') || 300);
+          a.el.style.opacity              = 1;
+          a.el.style.strokeDashoffset     = dashLen * (1 - e);
+          a.el.setAttribute('stroke-dashoffset', dashLen * (1 - e));
+          break;
+        }
+        default:
+          a.el.style.opacity = e;
+      }
+    });
+  }
+
+  /* ── Playback controls ──────────────────────────────────── */
+  function play() {
+    if (offsetT >= DURATION) offsetT = 0;
+    startWall = performance.now();
+    playing   = true;
+    playBtn.textContent = '⏸';
+    rafId = requestAnimationFrame(tick);
+  }
+  function pause() {
+    playing = false;
+    if (rafId) cancelAnimationFrame(rafId);
+    offsetT += (performance.now() - startWall) / 1000;
+    playBtn.textContent = '▶';
+  }
+  function toggle() { playing ? pause() : play(); }
+
+  /* ── HUD ────────────────────────────────────────────────── */
+  const hud = document.createElement('div');
+  hud.id = 'brag-hud';
+  Object.assign(hud.style, {
+    position:'fixed', bottom:'24px', left:'50%', transform:'translateX(-50%)',
+    display:'flex', alignItems:'center', gap:'12px',
+    background:'rgba(8,10,15,0.85)', backdropFilter:'blur(12px)',
+    border:'1px solid rgba(99,102,241,0.35)', borderRadius:'12px',
+    padding:'10px 18px', zIndex:9999, fontFamily:'JetBrains Mono,monospace',
+    fontSize:'13px', color:'#f8fafc', userSelect:'none',
+  });
+
+  const playBtn = document.createElement('button');
+  playBtn.textContent = '▶';
+  Object.assign(playBtn.style, {
+    background:'none', border:'none', color:'#f8fafc', fontSize:'16px',
+    cursor:'pointer', lineHeight:1, padding:'2px 6px',
+  });
+  playBtn.onclick = toggle;
+
+  const seekBar = document.createElement('input');
+  seekBar.type = 'range'; seekBar.min = 0; seekBar.max = 100; seekBar.value = 0; seekBar.step = 0.1;
+  Object.assign(seekBar.style, { width:'260px', accentColor:'#6366f1', cursor:'pointer' });
+  seekBar.oninput = () => {
+    const was = playing;
+    if (was) pause();
+    offsetT = (parseFloat(seekBar.value) / 100) * DURATION;
+    render(offsetT);
+    if (was) play();
+  };
+
+  const timeLabel = document.createElement('span');
+  timeLabel.textContent = '0.0s';
+  Object.assign(timeLabel.style, { color:'#94a3b8', minWidth:'38px' });
+
+  const totalLabel = document.createElement('span');
+  totalLabel.textContent = '/ 20s';
+  Object.assign(totalLabel.style, { color:'#64748b' });
+
+  const replayBtn = document.createElement('button');
+  replayBtn.textContent = '↺';
+  Object.assign(replayBtn.style, {
+    background:'none', border:'none', color:'#94a3b8', fontSize:'16px',
+    cursor:'pointer', lineHeight:1, padding:'2px 6px',
+  });
+  replayBtn.onclick = () => { offsetT = 0; render(0); play(); };
+
+  hud.append(playBtn, seekBar, timeLabel, totalLabel, replayBtn);
+  document.body.appendChild(hud);
+
+  /* ── Keyboard shortcut ──────────────────────────────────── */
+  document.addEventListener('keydown', e => {
+    if (e.code === 'Space') { e.preventDefault(); toggle(); }
+    if (e.code === 'KeyR')  { offsetT = 0; render(0); play(); }
+  });
+
+  /* ── Click anywhere (not HUD) to toggle ─────────────────── */
+  document.addEventListener('click', e => {
+    if (!hud.contains(e.target)) toggle();
+  });
+
+  /* ── Auto-play ───────────────────────────────────────────── */
+  render(0);
+  // slight delay so fonts load
+  setTimeout(play, 400);
+})();
+</script>
+</body>
+</html>
