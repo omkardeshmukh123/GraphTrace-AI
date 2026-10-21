@@ -69,10 +69,16 @@ export default function Dashboard() {
             ← All Projects
           </button>
           <button
+            className="btn btn-secondary"
+            onClick={() => navigate(`/projects/${projectId}/architecture`)}
+          >
+            <span>🏛️</span> Architecture
+          </button>
+          <button
             className="btn btn-primary"
             onClick={() => navigate(`/projects/${projectId}/graph`)}
           >
-            <span>🔭</span> Launch Graph Observatory
+            <span>🔭</span> Launch Graph
           </button>
         </div>
       </div>
@@ -108,11 +114,28 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Feature Exploration Grid (Phase 2 Hub) */}
+      {/* Feature Exploration Grid (Phase 4 Hub) */}
       <h2 style={{ fontSize: 18, fontWeight: 700, color: '#fff', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
         <span>⚡</span> Architectural Exploration Hub
       </h2>
       <div className="feature-grid">
+        <div
+          className="feature-card"
+          style={{ cursor: 'pointer' }}
+          onClick={() => navigate(`/projects/${projectId}/architecture`)}
+        >
+          <div className="feature-icon-wrapper" style={{ color: '#c084fc' }}>
+            🏛️
+          </div>
+          <h3 className="feature-title">Architecture Intelligence</h3>
+          <p className="feature-desc">
+            Explore system components, microservice boundaries, inter-service API traffic, and tech stack detection.
+          </p>
+          <div className="feature-action">
+            Explore Architecture <span>→</span>
+          </div>
+        </div>
+
         <div
           className="feature-card"
           style={{ cursor: 'pointer' }}

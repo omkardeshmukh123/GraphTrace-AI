@@ -86,6 +86,51 @@ export interface TraceabilityView {
   note?: string;
 }
 
+export interface ArchitectureStats {
+  total_systems: number;
+  total_components: number;
+  total_services: number;
+  total_technologies: number;
+  total_communications: number;
+}
+
+export interface ArchitectureView extends GraphView {
+  stats: ArchitectureStats;
+}
+
+export interface ComponentSummary {
+  id: string;
+  name: string;
+  category: string;
+  folder: string | null;
+  technologies: string[];
+  exposes: string[];
+  service_count: number;
+  file_count: number;
+}
+
+export interface ComponentDependencyView {
+  component: GraphNode;
+  calls: GraphNode[];
+  called_by: GraphNode[];
+  uses: GraphNode[];
+  exposes: GraphNode[];
+}
+
+export interface TechItem {
+  id: string;
+  name: string;
+  tech_name: string;
+  category: string;
+  used_by_components: string[];
+}
+
+export interface TechStackView {
+  project_id: string;
+  all: TechItem[];
+  by_category: Record<string, TechItem[]>;
+}
+
 /* ── Endpoints ── */
 
 export const api = {
@@ -150,4 +195,20 @@ export const api = {
     req<TraceabilityView>(
       `/projects/${projectId}/traceability/${encodeURIComponent(requirementId)}?max_depth=${maxDepth}`
     ),
+
+  /* ── Phase 4: Architecture Intelligence Endpoints ── */
+  getArchitecture: (projectId: string) =>
+    req<ArchitectureView>(`/projects/${projectId}/architecture`),
+
+  getComponents: (projectId: string) =>
+    req<ComponentSummary[]>(`/projects/${projectId}/components`),
+
+  getComponentDependencies: (projectId: string, componentId: string) =>
+    req<ComponentDependencyView>(
+      `/projects/${projectId}/components/${encodeURIComponent(componentId)}/dependencies`
+    ),
+
+  getTechnologies: (projectId: string) =>
+    req<TechStackView>(`/projects/${projectId}/technologies`),
 };
+

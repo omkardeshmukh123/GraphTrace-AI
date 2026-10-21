@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import AppShell from './components/AppShell';
 import Home from './pages/Home';
 import Dashboard from './pages/Dashboard';
+import Architecture from './pages/Architecture';
 import GraphExplorer from './pages/GraphExplorer';
 import Traceability from './pages/Traceability';
 import Dependencies from './pages/Dependencies';
@@ -15,6 +16,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/projects/:projectId" element={<Dashboard />} />
+          <Route path="/projects/:projectId/architecture" element={<Architecture />} />
           <Route path="/projects/:projectId/graph" element={<GraphExplorer />} />
           <Route path="/projects/:projectId/traceability" element={<Traceability />} />
           <Route path="/projects/:projectId/dependencies" element={<Dependencies />} />

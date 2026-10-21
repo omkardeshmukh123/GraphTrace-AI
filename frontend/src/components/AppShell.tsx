@@ -44,7 +44,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </svg>
           </div>
           <span>GraphTrace <span style={{ color: 'var(--primary-light)' }}>AI</span></span>
-          <span className="brand-title-badge">Phase 2</span>
+          <span className="brand-title-badge">Phase 4</span>
         </Link>
 
         {/* Project Switcher Selector */}
@@ -101,6 +101,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 className={`nav-link ${location.pathname === `/projects/${currentProjectId}` ? 'active' : ''}`}
               >
                 📊 Dashboard
+              </Link>
+              <Link
+                to={`/projects/${currentProjectId}/architecture`}
+                className={`nav-link ${location.pathname.includes('/architecture') ? 'active' : ''}`}
+              >
+                🏛️ Architecture
               </Link>
               <Link
                 to={`/projects/${currentProjectId}/graph`}
