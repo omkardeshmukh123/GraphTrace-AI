@@ -28,6 +28,7 @@ class GraphStore(Protocol):
     def get(self, project_id: str) -> ArtifactGraph: ...
     def save(self, graph: ArtifactGraph) -> None: ...
     def update(self, graph: ArtifactGraph) -> None: ...
+    def delete(self, project_id: str) -> None: ...
     def list_projects(self) -> list[ProjectSummary]: ...
     def check_writable(self) -> None: ...
     def ping(self) -> None: ...
@@ -86,6 +87,12 @@ class LocalGraphStore:
 
     def update(self, graph: ArtifactGraph) -> None:
         self.save(graph, overwrite=True)
+
+    def delete(self, project_id: str) -> None:
+        target = self._path(project_id)
+        if not target.exists():
+            raise AppError(404, "project_not_found", "Project does not exist.")
+        target.unlink(missing_ok=True)
 
     def list_projects(self) -> list[ProjectSummary]:
         graphs = [ArtifactGraph.model_validate_json(path.read_text(encoding="utf-8"))
@@ -171,3 +178,16 @@ class Neo4jGraphStore:
         with self.driver.session(database=self.settings.neo4j_database) as session:
             ids = session.execute_read(read)
         return [summarize(self.get(project_id)) for project_id in ids]
+
+    def delete(self, project_id: str) -> None:
+        def remove(tx):
+            res = tx.run(
+                "MATCH (n:Entity {project_id: $project_id}) DETACH DELETE n RETURN count(n) AS cnt",
+                project_id=project_id,
+            )
+            record = res.single()
+            if not record or record["cnt"] == 0:
+                raise AppError(404, "project_not_found", "Project does not exist.")
+        with self.driver.session(database=self.settings.neo4j_database) as session:
+            session.execute_write(remove)
+

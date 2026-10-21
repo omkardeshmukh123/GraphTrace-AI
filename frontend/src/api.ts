@@ -156,6 +156,11 @@ export const api = {
       body: JSON.stringify(graph),
     }),
 
+  deleteProject: (projectId: string) =>
+    req<{ status: string; id: string }>(`/projects/${encodeURIComponent(projectId)}`, {
+      method: 'DELETE',
+    }),
+
   getGraph: (
     projectId: string,
     opts?: { nodeTypes?: string[]; search?: string }

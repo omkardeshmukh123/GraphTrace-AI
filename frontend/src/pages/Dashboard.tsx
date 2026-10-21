@@ -80,6 +80,35 @@ export default function Dashboard() {
           >
             <span>🔭</span> Launch Graph
           </button>
+          <button
+            className="btn btn-secondary"
+            title="Reset this project to re-upload"
+            style={{
+              borderColor: 'rgba(244, 63, 94, 0.4)',
+              color: '#fb7185',
+              background: 'rgba(244, 63, 94, 0.08)',
+            }}
+            onClick={async () => {
+              if (
+                window.confirm(
+                  `Are you sure you want to reset and delete "${project.name}"?\n\nThis will remove the project so you can re-upload and demonstrate it from scratch.`
+                )
+              ) {
+                try {
+                  await api.deleteProject(project.id);
+                  navigate('/');
+                } catch (err: unknown) {
+                  alert(
+                    `Failed to reset project: ${
+                      err instanceof Error ? err.message : String(err)
+                    }`
+                  );
+                }
+              }
+            }}
+          >
+            <span>🗑️</span> Reset
+          </button>
         </div>
       </div>
 

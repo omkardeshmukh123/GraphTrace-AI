@@ -56,6 +56,13 @@ def project(project_id: Identifier, request: Request):
     return summarize(request.app.state.store.get(project_id))
 
 
+@router.delete("/projects/{project_id}", tags=["Projects"])
+def delete_project(project_id: Identifier, request: Request):
+    """Delete a project from the store so it can be re-analyzed or reset."""
+    request.app.state.store.delete(project_id)
+    return {"status": "deleted", "id": project_id}
+
+
 @router.get("/projects/{project_id}/graph", response_model=GraphView, tags=["Graph"])
 def graph(project_id: Identifier, request: Request,
           node_type: Annotated[list[NodeType] | None, Query()] = None,

@@ -264,3 +264,12 @@ def test_invalid_mapping_file(integrated, mappings):
     })
     assert result.status_code == 422
     assert integrated.get("/projects").json() == []
+
+
+def test_delete_project(seeded):
+    assert seeded.get("/projects/demo").status_code == 200
+    res = seeded.delete("/projects/demo")
+    assert res.status_code == 200
+    assert res.json() == {"status": "deleted", "id": "demo"}
+    assert seeded.get("/projects/demo").status_code == 404
+    assert seeded.delete("/projects/demo").status_code == 404

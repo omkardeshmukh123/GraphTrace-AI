@@ -25,6 +25,22 @@ export default function Home() {
     navigate(`/projects/${project.id}`);
   }
 
+  async function handleDeleteProject(id: string, name: string) {
+    if (
+      !window.confirm(
+        `Are you sure you want to reset and delete "${name}"?\n\nThis removes the project so you can re-upload and demonstrate it cleanly from scratch.`
+      )
+    ) {
+      return;
+    }
+    try {
+      await api.deleteProject(id);
+      setProjects((prev) => prev.filter((p) => p.id !== id));
+    } catch (e: unknown) {
+      alert(`Failed to delete project: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
   const filteredProjects = projects.filter((p) =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     p.id.toLowerCase().includes(searchTerm.toLowerCase())
@@ -153,9 +169,35 @@ export default function Home() {
                       <span className="project-id-tag">{p.id}</span>
                     </div>
                   </div>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--primary-light)', background: 'var(--primary-dim)', padding: '3px 8px', borderRadius: 999 }}>
-                    {p.source}
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--primary-light)', background: 'var(--primary-dim)', padding: '3px 8px', borderRadius: 999 }}>
+                      {p.source}
+                    </span>
+                    <button
+                      className="btn-icon"
+                      title={`Reset "${p.name}" to upload again`}
+                      style={{
+                        background: 'rgba(244, 63, 94, 0.1)',
+                        border: '1px solid rgba(244, 63, 94, 0.3)',
+                        color: '#fb7185',
+                        borderRadius: 6,
+                        padding: '3px 8px',
+                        cursor: 'pointer',
+                        fontSize: 11,
+                        fontWeight: 600,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        transition: 'all 0.2s ease',
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteProject(p.id, p.name);
+                      }}
+                    >
+                      <span>🗑️</span> Reset
+                    </button>
+                  </div>
                 </div>
 
                 {/* Mini Stats Bar */}
