@@ -26,6 +26,14 @@ from backend.app.models import (
     TraceabilityView,
     DEPENDENCY_TYPES,
     CODE_TYPES,
+    ARCH_TYPES,
+    ARCH_REL_TYPES,
+    ArchitectureStats,
+    ArchitectureView,
+    ComponentSummary,
+    ComponentDependencyView,
+    TechItem,
+    TechStackView,
     make_node_id,
 )
 
@@ -44,5 +52,13 @@ __all__ = [
     "TraceabilityView",
     "DEPENDENCY_TYPES",
     "CODE_TYPES",
+    "ARCH_TYPES",
+    "ARCH_REL_TYPES",
+    "ArchitectureStats",
+    "ArchitectureView",
+    "ComponentSummary",
+    "ComponentDependencyView",
+    "TechItem",
+    "TechStackView",
     "make_node_id",
 ]

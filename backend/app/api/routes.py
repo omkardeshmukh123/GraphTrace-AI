@@ -6,8 +6,10 @@ from backend.app.analysis import analyze
 from backend.app.graph import queries
 from backend.app.graph.store import summarize
 from backend.app.models import (
-    ArtifactGraph, DependencyView, GraphView, Identifier, NodeType, PathView,
-    ProjectSummary, RelationshipType, RequirementSummary, TraceabilityView,
+    ArchitectureView, ArtifactGraph, ComponentDependencyView,
+    ComponentSummary, DependencyView, GraphView, Identifier,
+    NodeType, PathView, ProjectSummary, RelationshipType,
+    RequirementSummary, TechStackView, TraceabilityView,
 )
 
 router = APIRouter()
@@ -84,3 +86,43 @@ def requirements(project_id: Identifier, request: Request):
 @router.get("/projects/{project_id}/traceability/{requirement_id}", response_model=TraceabilityView, tags=["Requirements"])
 def traceability(project_id: Identifier, requirement_id: Identifier, request: Request, max_depth: Depth = 5):
     return queries.traceability(request.app.state.store.get(project_id), requirement_id, max_depth)
+
+
+# ─── Phase 4 — Architecture Intelligence Endpoints ───────────────────────────
+
+@router.get("/projects/{project_id}/architecture", response_model=ArchitectureView, tags=["Architecture"])
+def get_architecture(project_id: Identifier, request: Request):
+    """
+    Returns the high-level architecture view of the project:
+    All SYSTEM, COMPONENT, SERVICE, and TECHNOLOGY nodes, their interconnecting
+    relationships, and aggregate architectural metrics.
+    """
+    return queries.architecture(request.app.state.store.get(project_id))
+
+
+@router.get("/projects/{project_id}/components", response_model=list[ComponentSummary], tags=["Architecture"])
+def list_components(project_id: Identifier, request: Request):
+    """
+    Lists all architectural components with layer categorization, folder paths,
+    used technologies, exposed endpoints, and nested service/file counts.
+    """
+    return queries.components(request.app.state.store.get(project_id))
+
+
+@router.get("/projects/{project_id}/components/{component_id}/dependencies", response_model=ComponentDependencyView, tags=["Architecture"])
+def get_component_dependencies(project_id: Identifier, component_id: Identifier, request: Request):
+    """
+    Drill-down dependency analysis for a single component:
+    outgoing/incoming calls, used technologies, and exposed services.
+    """
+    return queries.component_dependencies(request.app.state.store.get(project_id), component_id)
+
+
+@router.get("/projects/{project_id}/technologies", response_model=TechStackView, tags=["Architecture"])
+def get_technologies(project_id: Identifier, request: Request):
+    """
+    Returns the project's technology stack categorized by layer (web framework,
+    database, utilities, etc.) and lists which components use each technology.
+    """
+    return queries.tech_stack(request.app.state.store.get(project_id))
+

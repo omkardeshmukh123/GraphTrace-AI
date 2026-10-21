@@ -18,9 +18,10 @@ RelationshipType = Literal[
     # Phase 4 — Architecture Intelligence
     "COMMUNICATES_WITH", "EXPOSES", "TESTED_BY",
 ]
-DEPENDENCY_TYPES = {"IMPORTS", "CALLS", "EXTENDS", "IMPLEMENTS", "DEPENDS_ON", "USES"}
+DEPENDENCY_TYPES = {"IMPORTS", "CALLS", "EXTENDS", "IMPLEMENTS", "DEPENDS_ON", "USES", "COMMUNICATES_WITH"}
 CODE_TYPES = {"FILE", "PACKAGE", "MODULE", "CLASS", "INTERFACE", "METHOD", "FUNCTION"}
-ARCH_TYPES = {"SYSTEM", "COMPONENT", "SERVICE"}
+ARCH_TYPES = {"SYSTEM", "COMPONENT", "SERVICE", "TECHNOLOGY"}
+ARCH_REL_TYPES = {"PART_OF", "CONTAINS", "USES", "COMMUNICATES_WITH", "EXPOSES", "TESTED_BY"}
 
 
 class Contract(BaseModel):
@@ -120,6 +121,51 @@ class TraceabilityView(GraphView):
     evidence_paths: list[list[str]]
     depth_limited: bool
     note: str = "Mappings identify linked code; they do not verify requirement correctness."
+
+
+class ArchitectureStats(Contract):
+    total_systems: int = 0
+    total_components: int = 0
+    total_services: int = 0
+    total_technologies: int = 0
+    total_communications: int = 0
+
+
+class ArchitectureView(GraphView):
+    stats: ArchitectureStats
+
+
+class ComponentSummary(Contract):
+    id: Identifier
+    name: str
+    category: str
+    folder: str | None = None
+    technologies: list[str] = Field(default_factory=list)
+    exposes: list[str] = Field(default_factory=list)
+    service_count: int = 0
+    file_count: int = 0
+
+
+class ComponentDependencyView(Contract):
+    component: Node
+    calls: list[Node] = Field(default_factory=list)
+    called_by: list[Node] = Field(default_factory=list)
+    uses: list[Node] = Field(default_factory=list)
+    exposes: list[Node] = Field(default_factory=list)
+
+
+class TechItem(Contract):
+    id: str
+    name: str
+    tech_name: str
+    category: str
+    used_by_components: list[str] = Field(default_factory=list)
+
+
+class TechStackView(Contract):
+    project_id: Identifier
+    all: list[TechItem]
+    by_category: dict[str, list[TechItem]]
 
 
 def make_node_id(project_id: str, node_type: str, reference: str) -> str:
