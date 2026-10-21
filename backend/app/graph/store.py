@@ -27,6 +27,7 @@ def summarize(graph: ArtifactGraph) -> ProjectSummary:
 class GraphStore(Protocol):
     def get(self, project_id: str) -> ArtifactGraph: ...
     def save(self, graph: ArtifactGraph) -> None: ...
+    def update(self, graph: ArtifactGraph) -> None: ...
     def list_projects(self) -> list[ProjectSummary]: ...
     def check_writable(self) -> None: ...
     def ping(self) -> None: ...
@@ -52,7 +53,7 @@ class LocalGraphStore:
         except FileNotFoundError as exc:
             raise AppError(404, "project_not_found", "Project does not exist.") from exc
 
-    def save(self, graph: ArtifactGraph) -> None:
+    def save(self, graph: ArtifactGraph, overwrite: bool = False) -> None:
         target = self._path(graph.project_id)
         with NamedTemporaryFile(mode="w", encoding="utf-8", dir=self.directory, suffix=".tmp", delete=False) as file:
             temporary = Path(file.name)
@@ -65,6 +66,9 @@ class LocalGraphStore:
                 temporary.unlink(missing_ok=True)
                 raise
         try:
+            if overwrite:
+                os.replace(temporary, target)
+                return
             # An atomic link prevents both partial reads and accidental overwrites.
             # temporary and target are both created inside self.directory on the same filesystem.
             try:
@@ -79,6 +83,9 @@ class LocalGraphStore:
             raise AppError(409, "project_exists", "This project ID already exists; use a new project ID.") from exc
         finally:
             temporary.unlink(missing_ok=True)
+
+    def update(self, graph: ArtifactGraph) -> None:
+        self.save(graph, overwrite=True)
 
     def list_projects(self) -> list[ProjectSummary]:
         graphs = [ArtifactGraph.model_validate_json(path.read_text(encoding="utf-8"))
@@ -123,6 +130,9 @@ class Neo4jGraphStore:
     def save(self, graph: ArtifactGraph) -> None:
         writer = load_plugin(self.settings.graph_writer, "GRAPH_WRITER")
         writer(graph=graph, driver=self.driver, database=self.settings.neo4j_database)
+
+    def update(self, graph: ArtifactGraph) -> None:
+        self.save(graph)
 
     def get(self, project_id: str) -> ArtifactGraph:
         # Both reads use one transaction; all endpoints must belong to this project.

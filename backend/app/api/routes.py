@@ -97,7 +97,12 @@ def get_architecture(project_id: Identifier, request: Request):
     All SYSTEM, COMPONENT, SERVICE, and TECHNOLOGY nodes, their interconnecting
     relationships, and aggregate architectural metrics.
     """
-    return queries.architecture(request.app.state.store.get(project_id))
+    store = request.app.state.store
+    graph = store.get(project_id)
+    enriched = queries.ensure_architecture(graph)
+    if len(enriched.nodes) > len(graph.nodes):
+        store.update(enriched)
+    return queries.architecture(enriched)
 
 
 @router.get("/projects/{project_id}/components", response_model=list[ComponentSummary], tags=["Architecture"])
@@ -106,7 +111,12 @@ def list_components(project_id: Identifier, request: Request):
     Lists all architectural components with layer categorization, folder paths,
     used technologies, exposed endpoints, and nested service/file counts.
     """
-    return queries.components(request.app.state.store.get(project_id))
+    store = request.app.state.store
+    graph = store.get(project_id)
+    enriched = queries.ensure_architecture(graph)
+    if len(enriched.nodes) > len(graph.nodes):
+        store.update(enriched)
+    return queries.components(enriched)
 
 
 @router.get("/projects/{project_id}/components/{component_id}/dependencies", response_model=ComponentDependencyView, tags=["Architecture"])
@@ -115,7 +125,12 @@ def get_component_dependencies(project_id: Identifier, component_id: Identifier,
     Drill-down dependency analysis for a single component:
     outgoing/incoming calls, used technologies, and exposed services.
     """
-    return queries.component_dependencies(request.app.state.store.get(project_id), component_id)
+    store = request.app.state.store
+    graph = store.get(project_id)
+    enriched = queries.ensure_architecture(graph)
+    if len(enriched.nodes) > len(graph.nodes):
+        store.update(enriched)
+    return queries.component_dependencies(enriched, component_id)
 
 
 @router.get("/projects/{project_id}/technologies", response_model=TechStackView, tags=["Architecture"])
@@ -124,5 +139,10 @@ def get_technologies(project_id: Identifier, request: Request):
     Returns the project's technology stack categorized by layer (web framework,
     database, utilities, etc.) and lists which components use each technology.
     """
-    return queries.tech_stack(request.app.state.store.get(project_id))
+    store = request.app.state.store
+    graph = store.get(project_id)
+    enriched = queries.ensure_architecture(graph)
+    if len(enriched.nodes) > len(graph.nodes):
+        store.update(enriched)
+    return queries.tech_stack(enriched)
 

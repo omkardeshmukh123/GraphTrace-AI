@@ -1,6 +1,7 @@
 """Bounded graph traversals shared by the local and Neo4j adapters."""
 
 from collections import deque
+import re
 
 from backend.app.errors import AppError
 from backend.app.models import (
@@ -131,11 +132,207 @@ def traceability(graph: ArtifactGraph, requirement_id: str, max_depth: int) -> T
 
 # ─── Phase 4 — Architecture Intelligence Queries ─────────────────────────────
 
+def ensure_architecture(graph: ArtifactGraph) -> ArtifactGraph:
+    """
+    Guarantees the graph contains architectural entities (SYSTEM, COMPONENT, SERVICE, TECHNOLOGY).
+    If missing (such as projects imported before Phase 4 or repositories with arbitrary layout),
+    dynamically synthesizes architectural entities and relationships from code files, packages,
+    and documentation.
+    """
+    has_components = any(n.type == "COMPONENT" for n in graph.nodes)
+    if has_components:
+        return graph
+
+    project_id = graph.project_id
+    project_node = next((n for n in graph.nodes if n.id == project_id), None) or next((n for n in graph.nodes if n.type == "PROJECT"), None)
+    project_name = project_node.name if project_node else "System"
+
+    readme_node = next((n for n in graph.nodes if n.type == "DOCUMENT" and "readme" in n.name.lower()), None)
+    system_desc = (readme_node.properties.get("description") if readme_node else "") or f"Top-level architecture for {project_name}"
+
+    new_nodes = list(graph.nodes)
+    new_rels = list(graph.relationships)
+    seen_ids = {n.id for n in new_nodes}
+    seen_rel_keys = {(r.source, r.type, r.target) for r in new_rels}
+
+    # 1. System entity
+    system_id = f"system:{project_id}"
+    if system_id not in seen_ids:
+        new_nodes.append(Node(id=system_id, type="SYSTEM", name=project_name, properties={"project_id": project_id, "description": system_desc}))
+        seen_ids.add(system_id)
+
+    # 2. Gather paths
+    file_nodes = [n for n in graph.nodes if n.type == "FILE"]
+    pkg_nodes = [n for n in graph.nodes if n.type == "PACKAGE"]
+    all_paths = [str(f.properties.get("path") or f.properties.get("file_path") or f.name).replace("\\", "/") for f in file_nodes]
+    pkg_paths = [str(p.properties.get("path") or p.name).replace("\\", "/") for p in pkg_nodes]
+    combined_paths = all_paths + pkg_paths
+
+    # 3. Detect components
+    components_def: list[tuple[str, str, str, str]] = []
+
+    # Frontend UI check
+    is_frontend = (
+        any(p.startswith(("frontend", "client", "web", "ui")) for p in combined_paths) or
+        any("vite.config" in p or "tailwind" in p or "postcss.config" in p for p in combined_paths) or
+        any(p.startswith("src") and any(k in p for k in ("components", "hooks", "pages", "views", "ui", "toast")) for p in combined_paths)
+    )
+    if is_frontend:
+        components_def.append(("frontend", "Frontend UI", "presentation", "src" if any(p.startswith("src") for p in combined_paths) else "frontend"))
+
+    # Serverless / Cloud Functions / Supabase
+    if any("supabase" in p or "functions" in p for p in combined_paths):
+        components_def.append(("supabase", "Supabase Cloud Platform", "infrastructure", "supabase"))
+
+    # Integrations
+    if any("integrations" in p or "lovable" in p or "gateway" in p for p in combined_paths):
+        components_def.append(("integrations", "Integration Layer", "infrastructure", "src/integrations"))
+
+    # Core library / Security
+    if any("lib" in p or "core" in p or "crypto" in p or "vault" in p for p in combined_paths):
+        components_def.append(("core", "Security & Core Library", "security", "src/lib"))
+
+    # Backend / API (if present and distinct)
+    if any(p.startswith(("backend", "api", "server")) for p in combined_paths):
+        components_def.append(("backend", "Backend API Services", "application", "backend"))
+
+    # Quality & Test Suite
+    if any("test" in p or "spec" in p for p in combined_paths):
+        components_def.append(("test", "Quality & Test Suite", "quality", "src/test"))
+
+    # Fallback if no components detected
+    if not components_def:
+        components_def.append(("core_app", f"{project_name} Application", "application", "."))
+
+    comp_ids: dict[str, str] = {}
+    for c_key, c_name, c_cat, c_folder in components_def:
+        comp_id = f"component:{project_id}:{c_key}"
+        comp_ids[c_key] = comp_id
+        if comp_id not in seen_ids:
+            new_nodes.append(Node(id=comp_id, type="COMPONENT", name=c_name, properties={"folder": c_folder, "category": c_cat, "path": c_folder}))
+            seen_ids.add(comp_id)
+        for r_src, r_type, r_tgt in [(system_id, "CONTAINS", comp_id), (comp_id, "PART_OF", system_id)]:
+            if (r_src, r_type, r_tgt) not in seen_rel_keys:
+                new_rels.append(Relationship(source=r_src, type=r_type, target=r_tgt))
+                seen_rel_keys.add((r_src, r_type, r_tgt))
+
+    # 4. Detect services
+    service_ids: dict[str, str] = {}
+    for p in all_paths:
+        m = re.search(r"supabase/functions/([^/]+)/", p) or re.search(r"functions/([^/]+)/", p)
+        if m:
+            fn_name = m.group(1)
+            svc_key = fn_name.lower().replace("-", "_")
+            if svc_key not in service_ids:
+                svc_id = f"service:{project_id}:{svc_key}"
+                service_ids[svc_key] = svc_id
+                svc_clean = fn_name.replace("-", " ").replace("_", " ").title() + " Service"
+                if svc_id not in seen_ids:
+                    new_nodes.append(Node(id=svc_id, type="SERVICE", name=svc_clean, properties={"service_name": svc_key, "source_file": p}))
+                    seen_ids.add(svc_id)
+                parent_comp = comp_ids.get("supabase") or comp_ids.get("backend") or list(comp_ids.values())[0]
+                for r_src, r_type, r_tgt in [(parent_comp, "CONTAINS", svc_id), (parent_comp, "EXPOSES", svc_id), (svc_id, "PART_OF", system_id)]:
+                    if (r_src, r_type, r_tgt) not in seen_rel_keys:
+                        new_rels.append(Relationship(source=r_src, type=r_type, target=r_tgt))
+                        seen_rel_keys.add((r_src, r_type, r_tgt))
+        elif "client.ts" in p or "client.js" in p or "client.py" in p:
+            svc_key = "supabase_client" if "supabase" in p else "api_client"
+            if svc_key not in service_ids:
+                svc_id = f"service:{project_id}:{svc_key}"
+                service_ids[svc_key] = svc_id
+                svc_clean = "Supabase Client Gateway" if "supabase" in p else "API Client Gateway"
+                if svc_id not in seen_ids:
+                    new_nodes.append(Node(id=svc_id, type="SERVICE", name=svc_clean, properties={"service_name": svc_key, "source_file": p}))
+                    seen_ids.add(svc_id)
+                parent_comp = comp_ids.get("integrations") or comp_ids.get("frontend") or list(comp_ids.values())[0]
+                for r_src, r_type, r_tgt in [(parent_comp, "CONTAINS", svc_id), (parent_comp, "EXPOSES", svc_id), (svc_id, "PART_OF", system_id)]:
+                    if (r_src, r_type, r_tgt) not in seen_rel_keys:
+                        new_rels.append(Relationship(source=r_src, type=r_type, target=r_tgt))
+                        seen_rel_keys.add((r_src, r_type, r_tgt))
+
+    # Inter-service communications
+    for c_k in [k for k in service_ids if "client" in k or "gateway" in k]:
+        c_id = service_ids[c_k]
+        for s_key, s_id in service_ids.items():
+            if s_key != c_k and (c_id, "COMMUNICATES_WITH", s_id) not in seen_rel_keys:
+                new_rels.append(Relationship(source=c_id, type="COMMUNICATES_WITH", target=s_id))
+                seen_rel_keys.add((c_id, "COMMUNICATES_WITH", s_id))
+
+    if "validate_key" in service_ids and "vault" in service_ids:
+        k = (service_ids["validate_key"], "COMMUNICATES_WITH", service_ids["vault"])
+        if k not in seen_rel_keys:
+            new_rels.append(Relationship(source=k[0], type="COMMUNICATES_WITH", target=k[2]))
+            seen_rel_keys.add(k)
+
+    # Inter-component communications
+    c_pairs = [
+        ("frontend", "supabase"), ("frontend", "integrations"),
+        ("integrations", "supabase"), ("integrations", "core"),
+        ("frontend", "backend"), ("backend", "core"),
+    ]
+    for c1, c2 in c_pairs:
+        if c1 in comp_ids and c2 in comp_ids:
+            k = (comp_ids[c1], "COMMUNICATES_WITH", comp_ids[c2])
+            if k not in seen_rel_keys:
+                new_rels.append(Relationship(source=k[0], type="COMMUNICATES_WITH", target=k[2]))
+                seen_rel_keys.add(k)
+
+    # 5. Detect technologies
+    techs: set[str] = set()
+    if readme_node:
+        techs.update(readme_node.properties.get("technologies", []))
+    if any("vite.config" in p for p in combined_paths): techs.add("Vite")
+    if any("tailwind" in p for p in combined_paths): techs.add("Tailwind CSS")
+    if any("vitest" in p for p in combined_paths): techs.add("Vitest")
+    if any(p.endswith((".ts", ".tsx")) for p in all_paths): techs.add("TypeScript")
+    if any(p.endswith((".py",)) for p in all_paths): techs.add("Python")
+    if any("supabase" in p for p in combined_paths): techs.add("Supabase")
+
+    TECH_MAP = {
+        "react": ("ui-framework", ["frontend"]),
+        "typescript": ("language", ["frontend", "supabase", "integrations", "core"]),
+        "python": ("language", ["backend", "core"]),
+        "tailwind css": ("ui-framework", ["frontend"]),
+        "vite": ("build-tool", ["frontend"]),
+        "vitest": ("testing", ["test"]),
+        "supabase": ("backend-service", ["supabase", "integrations"]),
+        "postgresql": ("relational-db", ["supabase"]),
+        "node.js": ("runtime", ["supabase", "frontend"]),
+        "openai": ("llm-api", ["integrations", "supabase"]),
+        "go": ("language", ["supabase"]),
+    }
+    for t in techs:
+        t_clean = t.strip()
+        t_key = t_clean.lower()
+        cat, aff = TECH_MAP.get(t_key, ("tool", []))
+        safe_tech_name = re.sub(r"[^a-zA-Z0-9_]", "_", t_key)
+        tech_id = f"technology:{project_id}:{safe_tech_name}"
+        if tech_id not in seen_ids:
+            new_nodes.append(Node(id=tech_id, type="TECHNOLOGY", name=t_clean, properties={"tech_name": t_key, "category": cat}))
+            seen_ids.add(tech_id)
+        linked = False
+        for c_k in aff:
+            if c_k in comp_ids:
+                k = (comp_ids[c_k], "USES", tech_id)
+                if k not in seen_rel_keys:
+                    new_rels.append(Relationship(source=k[0], type="USES", target=tech_id))
+                    seen_rel_keys.add(k)
+                linked = True
+        if not linked:
+            k = (system_id, "USES", tech_id)
+            if k not in seen_rel_keys:
+                new_rels.append(Relationship(source=k[0], type="USES", target=tech_id))
+                seen_rel_keys.add(k)
+
+    return ArtifactGraph(project_id=project_id, nodes=new_nodes, relationships=new_rels)
+
+
 def architecture(graph: ArtifactGraph) -> ArchitectureView:
     """
     Extract the architectural subgraph (SYSTEM, COMPONENT, SERVICE, TECHNOLOGY)
     and all interconnecting relationships with architectural aggregate statistics.
     """
+    graph = ensure_architecture(graph)
     nodes = [node for node in graph.nodes if node.type in ARCH_TYPES]
     node_ids = {node.id for node in nodes}
     relationships = [
@@ -164,6 +361,7 @@ def components(graph: ArtifactGraph) -> list[ComponentSummary]:
     Return all COMPONENT nodes with their categories, folders, used technologies,
     exposed endpoints/services, and contained file/service counts.
     """
+    graph = ensure_architecture(graph)
     node_map = {n.id: n for n in graph.nodes}
     comp_nodes = [n for n in graph.nodes if n.type == "COMPONENT"]
 
@@ -221,6 +419,7 @@ def component_dependencies(graph: ArtifactGraph, component_id: str) -> Component
       - Uses (outgoing USES -> TECHNOLOGY)
       - Exposes (outgoing EXPOSES)
     """
+    graph = ensure_architecture(graph)
     comp = find_node(graph, component_id)
     if comp.type != "COMPONENT":
         raise AppError(422, "not_a_component", "Select a COMPONENT node.")
@@ -259,6 +458,7 @@ def tech_stack(graph: ArtifactGraph) -> TechStackView:
     """
     Return all TECHNOLOGY nodes grouped by category, with list of components using each.
     """
+    graph = ensure_architecture(graph)
     node_map = {n.id: n for n in graph.nodes}
     tech_nodes = [n for n in graph.nodes if n.type == "TECHNOLOGY"]
 

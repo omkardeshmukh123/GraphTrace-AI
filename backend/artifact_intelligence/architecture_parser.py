@@ -58,67 +58,89 @@ class ArchRelType:
 
 # ─── Known folder → component name mapping ────────────────────────────────────
 FOLDER_COMPONENT_MAP: dict[str, dict[str, str]] = {
-    "frontend":   {"name": "Frontend",          "category": "presentation"},
-    "ui":         {"name": "UI Layer",           "category": "presentation"},
-    "client":     {"name": "Client App",         "category": "presentation"},
-    "web":        {"name": "Web App",            "category": "presentation"},
-    "backend":    {"name": "Backend",            "category": "application"},
-    "src":        {"name": "Backend Services",   "category": "application"},
-    "api":        {"name": "API Layer",          "category": "application"},
-    "server":     {"name": "Server",             "category": "application"},
-    "app":        {"name": "Application",        "category": "application"},
-    "service":    {"name": "Service Layer",      "category": "application"},
-    "services":   {"name": "Services",           "category": "application"},
-    "auth":       {"name": "Auth Service",       "category": "security"},
-    "authentication": {"name": "Auth Service",  "category": "security"},
-    "gateway":    {"name": "API Gateway",        "category": "infrastructure"},
-    "db":         {"name": "Database Layer",     "category": "data"},
-    "database":   {"name": "Database Layer",     "category": "data"},
-    "models":     {"name": "Data Models",        "category": "data"},
-    "migrations":  {"name": "DB Migrations",     "category": "data"},
-    "core":       {"name": "Core Engine",        "category": "application"},
-    "engine":     {"name": "Processing Engine",  "category": "application"},
-    "workers":    {"name": "Background Workers", "category": "infrastructure"},
-    "queue":      {"name": "Message Queue",      "category": "infrastructure"},
-    "ml":         {"name": "ML Module",          "category": "intelligence"},
-    "ai":         {"name": "AI Module",          "category": "intelligence"},
-    "scripts":    {"name": "Scripts",            "category": "tooling"},
-    "tests":      {"name": "Test Suite",         "category": "quality"},
-    "test":       {"name": "Test Suite",         "category": "quality"},
-    "docs":       {"name": "Documentation",      "category": "documentation"},
-    "infra":      {"name": "Infrastructure",     "category": "infrastructure"},
-    "deploy":     {"name": "Deployment",         "category": "infrastructure"},
-    "config":     {"name": "Configuration",      "category": "infrastructure"},
+    "frontend":       {"name": "Frontend",               "category": "presentation"},
+    "ui":             {"name": "UI Layer",               "category": "presentation"},
+    "client":         {"name": "Client App",             "category": "presentation"},
+    "web":            {"name": "Web App",                "category": "presentation"},
+    "components":     {"name": "UI Components",          "category": "presentation"},
+    "hooks":          {"name": "React Hooks",            "category": "presentation"},
+    "views":          {"name": "View Layer",             "category": "presentation"},
+    "pages":          {"name": "Page Routing",           "category": "presentation"},
+    "store":          {"name": "State Management",       "category": "presentation"},
+    "backend":        {"name": "Backend",                "category": "application"},
+    "src":            {"name": "Application Core",       "category": "application"},
+    "api":            {"name": "API Layer",              "category": "application"},
+    "server":         {"name": "Server",                 "category": "application"},
+    "app":            {"name": "Application",            "category": "application"},
+    "service":        {"name": "Service Layer",          "category": "application"},
+    "services":       {"name": "Services",               "category": "application"},
+    "functions":      {"name": "Edge & Cloud Functions", "category": "application"},
+    "domain":         {"name": "Domain Layer",           "category": "application"},
+    "controllers":    {"name": "Controllers",            "category": "application"},
+    "handlers":       {"name": "Request Handlers",       "category": "application"},
+    "routes":         {"name": "API Routes",             "category": "application"},
+    "pkg":            {"name": "Packages",               "category": "application"},
+    "internal":       {"name": "Internal Services",      "category": "application"},
+    "supabase":       {"name": "Supabase Platform",      "category": "infrastructure"},
+    "integrations":   {"name": "Integration Layer",      "category": "infrastructure"},
+    "lib":            {"name": "Core Library & Utils",   "category": "application"},
+    "auth":           {"name": "Auth Service",           "category": "security"},
+    "authentication": {"name": "Auth Service",           "category": "security"},
+    "gateway":        {"name": "API Gateway",            "category": "infrastructure"},
+    "db":             {"name": "Database Layer",         "category": "data"},
+    "database":       {"name": "Database Layer",         "category": "data"},
+    "models":         {"name": "Data Models",            "category": "data"},
+    "migrations":     {"name": "DB Migrations",          "category": "data"},
+    "core":           {"name": "Core Engine",            "category": "application"},
+    "engine":         {"name": "Processing Engine",      "category": "application"},
+    "workers":        {"name": "Background Workers",     "category": "infrastructure"},
+    "queue":          {"name": "Message Queue",          "category": "infrastructure"},
+    "ml":             {"name": "ML Module",              "category": "intelligence"},
+    "ai":             {"name": "AI Module",              "category": "intelligence"},
+    "scripts":        {"name": "Scripts",                "category": "tooling"},
+    "utils":          {"name": "Utilities",              "category": "tooling"},
+    "tests":          {"name": "Test Suite",             "category": "quality"},
+    "test":           {"name": "Test Suite",             "category": "quality"},
+    "docs":           {"name": "Documentation",          "category": "documentation"},
+    "infra":          {"name": "Infrastructure",         "category": "infrastructure"},
+    "deploy":         {"name": "Deployment",             "category": "infrastructure"},
+    "config":         {"name": "Configuration",          "category": "infrastructure"},
 }
 
 # ─── Known technology → category mapping ─────────────────────────────────────
 TECH_CATEGORIES: dict[str, str] = {
-    # Python web frameworks
-    "fastapi":    "web-framework",   "flask":   "web-framework",
-    "django":     "web-framework",   "starlette": "web-framework",
-    # JS frameworks
-    "react":      "ui-framework",    "next.js":  "ui-framework",
-    "vue":        "ui-framework",    "angular":  "ui-framework",
-    "vite":       "build-tool",      "webpack":  "build-tool",
-    # Databases
-    "neo4j":      "graph-database",  "postgresql": "relational-db",
-    "mysql":      "relational-db",   "mongodb":   "document-db",
-    "redis":      "cache",           "sqlite":    "relational-db",
-    "elasticsearch": "search-engine",
-    # AI / ML
-    "langchain":  "llm-framework",   "llamaindex": "llm-framework",
-    "openai":     "llm-api",         "huggingface": "ml-platform",
-    "faiss":      "vector-db",       "chroma":    "vector-db",
-    # Infrastructure
-    "docker":     "containerization", "kubernetes": "orchestration",
-    "nginx":      "web-server",      "gunicorn":  "web-server",
-    # Languages
-    "python":     "language",        "javascript": "language",
-    "typescript": "language",        "java":     "language",
-    "go":         "language",        "rust":     "language",
+    # Web / UI frameworks
+    "fastapi":       "web-framework",   "flask":        "web-framework",
+    "django":        "web-framework",   "starlette":    "web-framework",
+    "express":       "web-framework",   "nestjs":       "web-framework",
+    "react":         "ui-framework",    "next.js":      "ui-framework",
+    "vue":           "ui-framework",    "angular":      "ui-framework",
+    "tailwind":      "ui-framework",    "tailwindcss":  "ui-framework",
+    "vite":          "build-tool",      "webpack":      "build-tool",
+    # Databases & Backend-as-a-Service
+    "supabase":      "backend-service", "firebase":     "backend-service",
+    "neo4j":         "graph-database",  "postgresql":   "relational-db",
+    "mysql":         "relational-db",   "mongodb":      "document-db",
+    "redis":         "cache",           "sqlite":       "relational-db",
+    "elasticsearch": "search-engine",   "prisma":       "orm",
+    "drizzle":       "orm",
+    # AI / LLM
+    "langchain":     "llm-framework",   "llamaindex":   "llm-framework",
+    "openai":        "llm-api",         "huggingface":  "ml-platform",
+    "faiss":         "vector-db",       "chroma":       "vector-db",
+    # Infrastructure & Tooling
+    "docker":        "containerization","kubernetes":   "orchestration",
+    "nginx":         "web-server",      "gunicorn":     "web-server",
+    "vitest":        "testing",         "jest":         "testing",
+    "playwright":    "testing",         "cypress":      "testing",
+    # Languages & Runtimes
+    "python":        "language",        "javascript":   "language",
+    "typescript":    "language",        "java":         "language",
+    "go":            "language",        "rust":         "language",
+    "node.js":       "runtime",         "node":         "runtime",
     # Protocols
-    "graphql":    "api-protocol",    "rest":     "api-protocol",
-    "grpc":       "api-protocol",    "websocket": "api-protocol",
+    "graphql":       "api-protocol",    "rest":         "api-protocol",
+    "grpc":          "api-protocol",    "websocket":    "api-protocol",
 }
 
 # Patterns to detect services inside docker-compose / README
@@ -261,12 +283,27 @@ class ArchitectureParser:
         except PermissionError:
             return {"entities": entities, "relationships": relationships, "component_ids": component_ids}
 
+        # Check frontend indicators in root
+        is_root_frontend = any(
+            (root_path / f).exists()
+            for f in ["vite.config.ts", "vite.config.js", "tailwind.config.ts", "tailwind.config.js", "postcss.config.js"]
+        )
+
         for folder in top_dirs:
             fname = folder.name.lower()
             if fname not in FOLDER_COMPONENT_MAP:
                 continue
 
-            info = FOLDER_COMPONENT_MAP[fname]
+            info = dict(FOLDER_COMPONENT_MAP[fname])
+            # If src is used with frontend config or UI subfolders, categorize as Frontend UI
+            if fname == "src":
+                has_ui_subfolders = any(
+                    (folder / sub).is_dir() for sub in ["components", "hooks", "pages", "views", "ui"]
+                )
+                if is_root_frontend or has_ui_subfolders:
+                    info["name"] = "Frontend UI"
+                    info["category"] = "presentation"
+
             comp_id = f"component:{project_id}:{fname}"
             component_ids[fname] = comp_id
 
@@ -311,12 +348,55 @@ class ArchitectureParser:
                 target=f"folder:{project_id}:{fname}",
             ))
 
+        # Check for modular sub-components in src and supabase
+        sub_modules = [
+            ("src/integrations", "integrations", "Integration Layer", "infrastructure"),
+            ("src/lib", "lib", "Core Library & Security", "security"),
+            ("supabase/functions", "functions", "Edge & Cloud Functions", "application"),
+            ("src/test", "test", "Quality & Test Suite", "quality"),
+        ]
+        for subpath, subkey, subname, subcat in sub_modules:
+            p = root_path / Path(subpath)
+            if p.is_dir() and subkey not in component_ids:
+                sub_comp_id = f"component:{project_id}:{subkey}"
+                component_ids[subkey] = sub_comp_id
+                entities.append(Entity(
+                    id=sub_comp_id,
+                    type=ArchEntityType.COMPONENT,
+                    name=subname,
+                    properties={
+                        "folder": subpath,
+                        "category": subcat,
+                        "path": subpath,
+                    },
+                ))
+                relationships.append(Relationship(source=sub_comp_id, type=ArchRelType.PART_OF, target=system_id))
+                relationships.append(Relationship(source=system_id, type=ArchRelType.CONTAINS, target=sub_comp_id))
+
+        # Universal fallback: if no components detected, create Application Core
+        if not entities:
+            fallback_id = f"component:{project_id}:app_core"
+            component_ids["app_core"] = fallback_id
+            entities.append(Entity(
+                id=fallback_id,
+                type=ArchEntityType.COMPONENT,
+                name="Application Core",
+                properties={"folder": ".", "category": "application", "path": "."},
+            ))
+            relationships.append(Relationship(source=fallback_id, type=ArchRelType.PART_OF, target=system_id))
+            relationships.append(Relationship(source=system_id, type=ArchRelType.CONTAINS, target=fallback_id))
+
         # Detect inter-component COMMUNICATES_WITH from known patterns
-        # e.g. "frontend" communicates with "backend"/"src"/"api"
         COMM_PAIRS = [
             ("frontend", "backend"),
             ("frontend", "src"),
             ("frontend", "api"),
+            ("frontend", "supabase"),
+            ("frontend", "integrations"),
+            ("frontend", "functions"),
+            ("integrations", "supabase"),
+            ("integrations", "functions"),
+            ("integrations", "lib"),
             ("client", "api"),
             ("client", "backend"),
             ("client", "src"),
@@ -346,7 +426,7 @@ class ArchitectureParser:
             "component_ids": component_ids,
         }
 
-    # ─── Service extraction (Docker-compose + Code Services) ──────────────────
+    # ─── Service extraction (Docker-compose + Edge Functions + Code Services) ─
 
     def _parse_services(
         self,
@@ -355,7 +435,7 @@ class ArchitectureParser:
         system_id: str,
         component_ids: dict[str, str],
     ) -> dict:
-        """Extract runtime services from docker-compose or code service files."""
+        """Extract runtime services from docker-compose, edge functions, or code service files."""
         entities: list[Entity] = []
         relationships: list[Relationship] = []
         service_ids: dict[str, str] = {}
@@ -367,8 +447,82 @@ class ArchitectureParser:
         for e in docker_res["entities"]:
             service_ids[e.properties.get("service_name", e.name.lower())] = e.id
 
-        # 2. Also detect code-level services (e.g. auth_service.py, order_service.py, api_gateway.py)
-        service_patterns = ["**/*_service.py", "**/*_gateway.py", "**/*_logger.py"]
+        # 2a. Detect Edge & Serverless Functions (e.g. supabase/functions/*/index.ts)
+        edge_patterns = [
+            "**/functions/*/index.ts", "**/functions/*/index.js",
+            "**/functions/*/*.py", "**/functions/*/*.go"
+        ]
+        for pat in edge_patterns:
+            try:
+                for match in root_path.glob(pat):
+                    if match.is_file():
+                        fn_dir = match.parent.name
+                        svc_key = fn_dir.lower().replace("-", "_")
+                        clean_name = fn_dir.replace("-", " ").replace("_", " ").title() + " Service"
+                        if svc_key in service_ids:
+                            continue
+                        svc_id = f"service:{project_id}:{svc_key}"
+                        service_ids[svc_key] = svc_id
+                        rel_path = str(match.relative_to(root_path)).replace("\\", "/")
+                        entities.append(Entity(
+                            id=svc_id,
+                            type=ArchEntityType.SERVICE,
+                            name=clean_name,
+                            properties={"service_name": svc_key, "source_file": rel_path},
+                        ))
+                        relationships.append(Relationship(
+                            source=svc_id,
+                            type=ArchRelType.PART_OF,
+                            target=system_id,
+                        ))
+                        # Connect parent component -[CONTAINS]-> SERVICE & -[EXPOSES]-> SERVICE
+                        connected = False
+                        for folder_key in ("functions", "supabase", "backend", "api", "src"):
+                            if folder_key in component_ids:
+                                comp_id = component_ids[folder_key]
+                                relationships.append(Relationship(source=comp_id, type=ArchRelType.CONTAINS, target=svc_id))
+                                relationships.append(Relationship(source=comp_id, type=ArchRelType.EXPOSES, target=svc_id))
+                                connected = True
+                                break
+                        if not connected and component_ids:
+                            first_comp = list(component_ids.values())[0]
+                            relationships.append(Relationship(source=first_comp, type=ArchRelType.CONTAINS, target=svc_id))
+                            relationships.append(Relationship(source=first_comp, type=ArchRelType.EXPOSES, target=svc_id))
+            except Exception:
+                pass
+
+        # 2b. Detect Client Gateways (e.g. client.ts, client.js)
+        try:
+            for match in root_path.glob("**/client.*"):
+                if match.is_file() and not match.name.startswith("test"):
+                    rel_path = str(match.relative_to(root_path)).replace("\\", "/")
+                    parent_name = match.parent.name
+                    svc_key = f"{parent_name}_client" if parent_name not in ("src", "lib") else "api_client"
+                    clean_name = svc_key.replace("_", " ").title() + " Service"
+                    if svc_key not in service_ids:
+                        svc_id = f"service:{project_id}:{svc_key}"
+                        service_ids[svc_key] = svc_id
+                        entities.append(Entity(
+                            id=svc_id,
+                            type=ArchEntityType.SERVICE,
+                            name=clean_name,
+                            properties={"service_name": svc_key, "source_file": rel_path},
+                        ))
+                        relationships.append(Relationship(source=svc_id, type=ArchRelType.PART_OF, target=system_id))
+                        for folder_key in ("integrations", "frontend", "src", "client"):
+                            if folder_key in component_ids:
+                                comp_id = component_ids[folder_key]
+                                relationships.append(Relationship(source=comp_id, type=ArchRelType.CONTAINS, target=svc_id))
+                                relationships.append(Relationship(source=comp_id, type=ArchRelType.EXPOSES, target=svc_id))
+                                break
+        except Exception:
+            pass
+
+        # 2c. Detect code-level services (e.g. auth_service.py, order_service.py, api_gateway.py, *.service.ts)
+        service_patterns = [
+            "**/*_service.py", "**/*_gateway.py", "**/*_logger.py",
+            "**/*.service.ts", "**/*.service.js", "**/*.controller.ts",
+        ]
         found_service_files: list[Path] = []
         for pat in service_patterns:
             try:
@@ -379,9 +533,9 @@ class ArchitectureParser:
                 pass
 
         for sfile in found_service_files:
-            base = sfile.stem  # e.g. "auth_service", "order_service"
-            clean_name = base.replace("_", " ").title().replace(" ", "")
-            svc_key = base.lower()
+            base = sfile.stem.split(".")[0]  # handle .service.ts
+            clean_name = base.replace("_", " ").replace("-", " ").title().replace(" ", "")
+            svc_key = base.lower().replace("-", "_")
 
             if svc_key in service_ids:
                 continue
@@ -434,6 +588,7 @@ class ArchitectureParser:
             ("order_service", "notification_service"),
             ("order_service", "audit_logger"),
             ("auth_service", "audit_logger"),
+            ("validate_key", "vault"),
         ]
         for src_k, tgt_k in SVC_COMMS:
             if src_k in service_ids and tgt_k in service_ids:
@@ -441,6 +596,17 @@ class ArchitectureParser:
                     source=service_ids[src_k],
                     type=ArchRelType.COMMUNICATES_WITH,
                     target=service_ids[tgt_k],
+                ))
+
+        # Connect client gateways to other services
+        client_svcs = [k for k in service_ids if "client" in k or "gateway" in k]
+        other_svcs = [k for k in service_ids if k not in client_svcs]
+        for c_k in client_svcs:
+            for o_k in other_svcs:
+                relationships.append(Relationship(
+                    source=service_ids[c_k],
+                    type=ArchRelType.COMMUNICATES_WITH,
+                    target=service_ids[o_k],
                 ))
 
         return {"entities": entities, "relationships": relationships}
@@ -640,6 +806,25 @@ class ArchitectureParser:
             except Exception:
                 pass
 
+        # Config files presence detection
+        config_checks = [
+            ("tailwind.config.ts", ["tailwind", "tailwindcss"]),
+            ("tailwind.config.js", ["tailwind", "tailwindcss"]),
+            ("vite.config.ts", ["vite"]),
+            ("vite.config.js", ["vite"]),
+            ("vitest.config.ts", ["vitest"]),
+            ("vitest.config.js", ["vitest"]),
+            ("tsconfig.json", ["typescript"]),
+            ("docker-compose.yml", ["docker"]),
+            ("Dockerfile", ["docker"]),
+        ]
+        for cfg_file, techs in config_checks:
+            if (root_path / cfg_file).exists():
+                found.update(techs)
+
+        if (root_path / "supabase").is_dir():
+            found.update(["supabase", "postgresql"])
+
         return found
 
     def _build_tech_entities(
@@ -655,24 +840,34 @@ class ArchitectureParser:
 
         # Tech → component affinity (which component uses which tech)
         TECH_TO_COMPONENT: dict[str, list[str]] = {
-            "react":   ["frontend", "ui", "client", "web"],
-            "next.js": ["frontend", "ui", "client"],
-            "vue":     ["frontend", "ui", "client"],
-            "angular": ["frontend", "ui", "client"],
-            "vite":    ["frontend", "ui", "client"],
-            "fastapi": ["backend", "api", "app", "server", "src"],
-            "flask":   ["backend", "api", "app", "src"],
-            "django":  ["backend", "api", "app", "src"],
-            "neo4j":   ["backend", "db", "database", "core", "src"],
-            "redis":   ["backend", "workers", "db", "src"],
-            "postgresql": ["db", "database", "backend", "src"],
-            "mongodb": ["db", "database", "backend", "src"],
-            "langchain": ["backend", "core", "ai", "ml", "src"],
-            "openai":  ["backend", "core", "ai", "ml", "src"],
-            "faiss":   ["backend", "core", "ai", "ml", "src"],
-            "chroma":  ["backend", "core", "ai", "ml", "src"],
-            "docker":  [None],
-            "kubernetes": [None],
+            "react":       ["frontend", "ui", "client", "web", "src"],
+            "next.js":     ["frontend", "ui", "client", "src"],
+            "vue":         ["frontend", "ui", "client", "src"],
+            "angular":     ["frontend", "ui", "client", "src"],
+            "vite":        ["frontend", "ui", "client", "src"],
+            "tailwind":    ["frontend", "ui", "client", "src"],
+            "tailwindcss": ["frontend", "ui", "client", "src"],
+            "typescript":  ["frontend", "supabase", "integrations", "lib", "src"],
+            "javascript":  ["frontend", "src", "client"],
+            "node.js":     ["supabase", "functions", "backend", "frontend", "src"],
+            "node":        ["supabase", "functions", "backend", "frontend", "src"],
+            "supabase":    ["supabase", "functions", "integrations"],
+            "fastapi":     ["backend", "api", "app", "server", "src"],
+            "flask":       ["backend", "api", "app", "src"],
+            "django":      ["backend", "api", "app", "src"],
+            "neo4j":       ["backend", "db", "database", "core", "src"],
+            "redis":       ["backend", "workers", "db", "src"],
+            "postgresql":  ["supabase", "db", "database", "backend", "src"],
+            "mongodb":     ["db", "database", "backend", "src"],
+            "langchain":   ["backend", "core", "ai", "ml", "src"],
+            "openai":      ["integrations", "backend", "core", "ai", "ml", "src", "supabase"],
+            "faiss":       ["backend", "core", "ai", "ml", "src"],
+            "chroma":      ["backend", "core", "ai", "ml", "src"],
+            "vitest":      ["test", "tests"],
+            "jest":        ["test", "tests"],
+            "go":          ["supabase", "backend", "core", "src"],
+            "docker":      [None],
+            "kubernetes":  [None],
         }
 
         for tech in all_techs:
