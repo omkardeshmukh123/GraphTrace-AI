@@ -22,7 +22,10 @@ Returns BuildResult with counts for the API response.
 from dataclasses import dataclass, field
 from neo4j import Driver
 
-from artifact_intelligence.models import ArtifactData, Entity, Relationship
+try:
+    from backend.artifact_intelligence.models import ArtifactData, Entity, Relationship
+except ImportError:
+    from artifact_intelligence.models import ArtifactData, Entity, Relationship
 from .models import NodeLabel, RelType
 from .connection import get_driver
 

@@ -15,7 +15,10 @@ Usage:
 """
 
 from neo4j import GraphDatabase, Driver
-from config import settings
+try:
+    from backend.config import settings
+except ImportError:
+    from config import settings
 
 _driver: Driver | None = None
 

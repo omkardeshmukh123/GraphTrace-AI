@@ -4,12 +4,18 @@ M2 — Knowledge Graph Engine — Graph Query Engine
 Provides graph query functions for M2 standalone server and knowledge graph inspection.
 
 Phase 1 query functions:
-  get_graph_data(project_id)   → all nodes + relationships for visualization
-  get_all_nodes(project_id)    → list of all nodes (with properties)
-  get_node(entity_id)          → single node detail
-  get_children(entity_id)      → nodes connected via CONTAINS
-  get_stats(project_id)        → count of nodes by type
-  get_project_tree(project_id) → hierarchy starting from Repository node
+  get_graph_data(project_id)        → all nodes + relationships for visualization
+  get_all_nodes(project_id)         → list of all nodes (with properties)
+  get_node(entity_id)               → single node detail
+  get_children(entity_id)           → nodes connected via CONTAINS
+  get_stats(project_id)             → count of nodes by type
+  get_project_tree(project_id)      → hierarchy starting from Repository node
+
+Phase 4 query functions (Architecture Intelligence):
+  get_architecture_view(project_id)     → SYSTEM + COMPONENT + SERVICE + TECHNOLOGY subgraph
+  get_components(project_id)            → all COMPONENT nodes with category/metadata
+  get_component_dependencies(comp_id)   → COMMUNICATES_WITH + USES graph for one component
+  get_technology_stack(project_id)      → all TECHNOLOGY nodes grouped by category
 """
 
 from neo4j import Driver
@@ -250,3 +256,257 @@ class GraphQueryEngine:
             }
             children.append(child)
         return children
+
+    # ─── Phase 4: Architecture Intelligence queries ────────────────────────────────
+
+    def get_architecture_view(self, project_id: str) -> dict:
+        """
+        Return the architectural subgraph for a project:
+          - All SYSTEM, COMPONENT, SERVICE, TECHNOLOGY nodes
+          - All relationships between them (PART_OF, CONTAINS, USES,
+            COMMUNICATES_WITH, EXPOSES)
+
+        Used by M4 Architecture Visualization panel.
+
+        Returns:
+            {
+              "nodes": [{ "id", "type", "name", "category", ...props }],
+              "edges": [{ "source", "type", "target" }]
+            }
+        """
+        with self._driver.session() as session:
+            # Arch nodes
+            nodes_result = session.run(
+                """
+                MATCH (n)
+                WHERE n.project_id = $project_id
+                  AND labels(n)[0] IN ['System', 'Component', 'Service', 'Technology']
+                RETURN
+                    n.id        AS id,
+                    labels(n)[0] AS label,
+                    n.name      AS name,
+                    properties(n) AS props
+                ORDER BY label, name
+                """,
+                project_id=project_id,
+            )
+            nodes = []
+            node_ids: set[str] = set()
+            for record in nodes_result:
+                node = {
+                    "id":    record["id"],
+                    "type":  record["label"],
+                    "name":  record["name"],
+                    **{k: v for k, v in record["props"].items()
+                       if k not in ("id", "name") and v is not None},
+                }
+                nodes.append(node)
+                node_ids.add(record["id"])
+
+            # Edges between arch nodes only
+            edges_result = session.run(
+                """
+                MATCH (a)-[r]->(b)
+                WHERE a.project_id = $project_id
+                  AND labels(a)[0] IN ['System', 'Component', 'Service', 'Technology']
+                  AND labels(b)[0] IN ['System', 'Component', 'Service', 'Technology']
+                RETURN
+                    a.id AS source,
+                    type(r) AS rel_type,
+                    b.id AS target
+                """,
+                project_id=project_id,
+            )
+            edges = [
+                {"source": r["source"], "type": r["rel_type"], "target": r["target"]}
+                for r in edges_result
+            ]
+
+        return {
+            "nodes": nodes,
+            "edges": edges,
+            "summary": {
+                "total_components": sum(1 for n in nodes if n["type"] == "Component"),
+                "total_services":   sum(1 for n in nodes if n["type"] == "Service"),
+                "total_technologies": sum(1 for n in nodes if n["type"] == "Technology"),
+            },
+        }
+
+    def get_components(self, project_id: str) -> list[dict]:
+        """
+        Return all COMPONENT nodes for a project, with category and metadata.
+        Used by M4 Component Panel and Architecture Diagram.
+
+        Returns:
+            List of component dicts sorted by category then name.
+        """
+        with self._driver.session() as session:
+            result = session.run(
+                """
+                MATCH (c:Component)
+                WHERE c.project_id = $project_id
+                OPTIONAL MATCH (c)-[:USES]->(t:Technology)
+                OPTIONAL MATCH (c)-[:EXPOSES]->(api:Component)
+                RETURN
+                    c.id       AS id,
+                    c.name     AS name,
+                    c.category AS category,
+                    c.folder   AS folder,
+                    collect(DISTINCT t.name) AS technologies,
+                    collect(DISTINCT api.name) AS exposes
+                ORDER BY category, name
+                """,
+                project_id=project_id,
+            )
+            return [
+                {
+                    "id":           r["id"],
+                    "name":         r["name"],
+                    "category":     r["category"],
+                    "folder":       r["folder"],
+                    "technologies": [t for t in r["technologies"] if t],
+                    "exposes":      [e for e in r["exposes"] if e],
+                }
+                for r in result
+            ]
+
+    def get_component_dependencies(self, component_id: str) -> dict:
+        """
+        Return the dependency graph for a single component:
+          - Outgoing COMMUNICATES_WITH (what this component depends on)
+          - Incoming COMMUNICATES_WITH (what depends on this component)
+          - Outgoing USES (technologies this component uses)
+          - Outgoing EXPOSES (APIs this component exposes)
+
+        Used by M4 Architecture Explorer drill-down.
+
+        Returns:
+            {
+              "component": { id, name, category },
+              "calls":     [{ id, name, type }],     # COMMUNICATES_WITH targets
+              "called_by": [{ id, name, type }],     # COMMUNICATES_WITH sources
+              "uses":      [{ id, name, tech_name, category }],
+              "exposes":   [{ id, name }],
+            }
+        """
+        with self._driver.session() as session:
+            # Get the component itself
+            comp_result = session.run(
+                """
+                MATCH (c {id: $id})
+                RETURN c.id AS id, c.name AS name,
+                       c.category AS category, labels(c)[0] AS label
+                """,
+                id=component_id,
+            )
+            comp_record = comp_result.single()
+            if not comp_record:
+                return {"error": "Component not found", "id": component_id}
+
+            component = {
+                "id":       comp_record["id"],
+                "name":     comp_record["name"],
+                "category": comp_record["category"],
+                "type":     comp_record["label"],
+            }
+
+            # Outgoing COMMUNICATES_WITH
+            calls_result = session.run(
+                """
+                MATCH (c {id: $id})-[:COMMUNICATES_WITH]->(target)
+                RETURN target.id AS id, target.name AS name, labels(target)[0] AS type
+                ORDER BY name
+                """,
+                id=component_id,
+            )
+            calls = [dict(r) for r in calls_result]
+
+            # Incoming COMMUNICATES_WITH
+            called_by_result = session.run(
+                """
+                MATCH (source)-[:COMMUNICATES_WITH]->(c {id: $id})
+                RETURN source.id AS id, source.name AS name, labels(source)[0] AS type
+                ORDER BY name
+                """,
+                id=component_id,
+            )
+            called_by = [dict(r) for r in called_by_result]
+
+            # USES (technology dependencies)
+            uses_result = session.run(
+                """
+                MATCH (c {id: $id})-[:USES]->(t:Technology)
+                RETURN t.id AS id, t.name AS name,
+                       t.tech_name AS tech_name, t.category AS category
+                ORDER BY name
+                """,
+                id=component_id,
+            )
+            uses = [dict(r) for r in uses_result]
+
+            # EXPOSES (API surface)
+            exposes_result = session.run(
+                """
+                MATCH (c {id: $id})-[:EXPOSES]->(api)
+                RETURN api.id AS id, api.name AS name
+                ORDER BY name
+                """,
+                id=component_id,
+            )
+            exposes = [dict(r) for r in exposes_result]
+
+        return {
+            "component": component,
+            "calls":     calls,
+            "called_by": called_by,
+            "uses":      uses,
+            "exposes":   exposes,
+        }
+
+    def get_technology_stack(self, project_id: str) -> dict:
+        """
+        Return all TECHNOLOGY nodes for a project, grouped by category.
+
+        Used by M4 Technology Stack panel and project dashboard.
+
+        Returns:
+            {
+              "all": [{ id, name, tech_name, category }],
+              "by_category": {
+                "web-framework": [...],
+                "database": [...],
+                ...
+              }
+            }
+        """
+        with self._driver.session() as session:
+            result = session.run(
+                """
+                MATCH (t:Technology)
+                WHERE t.project_id = $project_id
+                OPTIONAL MATCH (c:Component)-[:USES]->(t)
+                RETURN
+                    t.id        AS id,
+                    t.name      AS name,
+                    t.tech_name AS tech_name,
+                    t.category  AS category,
+                    collect(DISTINCT c.name) AS used_by_components
+                ORDER BY category, name
+                """,
+                project_id=project_id,
+            )
+            all_techs = []
+            by_category: dict[str, list] = {}
+            for r in result:
+                tech = {
+                    "id":                  r["id"],
+                    "name":                r["name"],
+                    "tech_name":           r["tech_name"],
+                    "category":            r["category"] or "other",
+                    "used_by_components": [c for c in r["used_by_components"] if c],
+                }
+                all_techs.append(tech)
+                cat = tech["category"]
+                by_category.setdefault(cat, []).append(tech)
+
+        return {"all": all_techs, "by_category": by_category}

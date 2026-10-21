@@ -33,12 +33,16 @@ logger = logging.getLogger(__name__)
 
 # Whitelist of allowed relationship types (prevents Cypher injection)
 _ALLOWED_REL_TYPES = {
+    # Phase 1 — code structure
     "CONTAINS", "IMPORTS", "CALLS", "EXTENDS", "IMPLEMENTS",
     "DEPENDS_ON", "IMPLEMENTED_BY", "DOCUMENTED_BY", "USES", "PART_OF",
+    # Phase 4 — Architecture Intelligence
+    "COMMUNICATES_WITH", "EXPOSES", "TESTED_BY",
 }
 
 # Optional extra labels for richer Neo4j schema
 _EXTRA_LABELS: dict[str, str] = {
+    # Phase 1 — code entities
     "FILE":        "File",
     "CLASS":       "Class",
     "FUNCTION":    "Function",
@@ -49,6 +53,10 @@ _EXTRA_LABELS: dict[str, str] = {
     "DOCUMENT":    "Document",
     "TECHNOLOGY":  "Technology",
     "PROJECT":     "Project",
+    # Phase 4 — Architecture Intelligence
+    "SYSTEM":      "System",
+    "COMPONENT":   "Component",
+    "SERVICE":     "Service",
 }
 
 
