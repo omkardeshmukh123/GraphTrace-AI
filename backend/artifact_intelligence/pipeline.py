@@ -30,6 +30,7 @@ from backend.app.models import ArtifactGraph, Node, Relationship, make_node_id
 # M1 internal imports — within the same package
 from backend.artifact_intelligence.analyzer import ArtifactAnalyzer
 from backend.artifact_intelligence.models import EntityType, RelationshipType as M1RelType
+from backend.artifact_intelligence.architecture_parser import ArchEntityType, ArchRelType
 
 
 # ─── Type mapping: M1 EntityType → M3 NodeType ────────────────────────────────
@@ -40,6 +41,11 @@ _ENTITY_TYPE_MAP: dict[str, str] = {
     EntityType.CLASS:      "CLASS",
     EntityType.FUNCTION:   "FUNCTION",
     EntityType.README:     "DOCUMENT",
+    # Phase 4 — Architecture Intelligence
+    ArchEntityType.SYSTEM:      "SYSTEM",
+    ArchEntityType.COMPONENT:   "COMPONENT",
+    ArchEntityType.SERVICE:     "SERVICE",
+    ArchEntityType.TECHNOLOGY:  "TECHNOLOGY",
 }
 
 # ─── Relationship type mapping: M1 → M3 ────────────────────────────────────────
@@ -47,6 +53,12 @@ _REL_TYPE_MAP: dict[str, str] = {
     M1RelType.CONTAINS:   "CONTAINS",
     M1RelType.DEFINES:    "CONTAINS",    # FILE defines CLASS → CONTAINS in M3
     M1RelType.HAS_README: "DOCUMENTED_BY",
+    # Phase 4 — Architecture Intelligence
+    ArchRelType.CONTAINS:          "CONTAINS",
+    ArchRelType.PART_OF:           "PART_OF",
+    ArchRelType.USES:              "USES",
+    ArchRelType.COMMUNICATES_WITH: "COMMUNICATES_WITH",
+    ArchRelType.EXPOSES:           "EXPOSES",
 }
 
 
@@ -90,6 +102,8 @@ def parse_project(
         id_map[repo_entity.id] = project_id
 
     # ── Step 3: Convert all M1 entities → M3 Nodes ──────────────────────────
+    ARCH_ENTITY_TYPES = {ArchEntityType.SYSTEM, ArchEntityType.COMPONENT, ArchEntityType.SERVICE, ArchEntityType.TECHNOLOGY}
+
     for entity in m1_data.entities:
         node_type = _ENTITY_TYPE_MAP.get(entity.type)
         if not node_type:
@@ -98,6 +112,11 @@ def parse_project(
         # Use project_id directly for the repo/project node
         if entity.type == EntityType.REPOSITORY:
             m3_id = project_id
+        elif entity.type in ARCH_ENTITY_TYPES:
+            # Architecture entities: use their existing stable ID directly as reference
+            # IDs are already stable strings like "component:proj:backend"
+            # Convert via make_node_id using entity.id as reference
+            m3_id = make_node_id(project_id, node_type, entity.id)
         else:
             # Build a stable reference string for uuid5 (normalized with forward slashes)
             rel_path = str(entity.properties.get("relative_path") or entity.properties.get("file_path") or entity.name).replace("\\", "/")
@@ -128,6 +147,13 @@ def parse_project(
             props["is_method"] = entity.properties["is_method"]
         if entity.properties.get("parent_class"):
             props["parent_class"] = entity.properties["parent_class"]
+        # Phase 4 arch-specific properties
+        if entity.type in ARCH_ENTITY_TYPES:
+            for arch_prop in ("category", "folder", "service_name", "tech_name",
+                              "image", "ports", "route_files", "route_file_count",
+                              "sub_folders", "arch_type"):
+                if entity.properties.get(arch_prop) is not None:
+                    props[arch_prop] = entity.properties[arch_prop]
         # reference field used by manual mappings (e.g. auth.py::AuthService.login)
         if entity.type in (EntityType.CLASS, EntityType.FUNCTION):
             norm_rel = str(entity.properties.get("relative_path") or entity.properties.get("file_path") or "").replace("\\", "/")

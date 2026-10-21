@@ -17,6 +17,7 @@ from pathlib import Path
 from .zip_handler import ZipHandler, ArtifactInventory
 from .readme_parser import ReadmeParser
 from .code_parser import CodeParser
+from .architecture_parser import ArchitectureParser
 from .models import ArtifactData, Entity, Relationship, EntityType, RelationshipType
 
 
@@ -33,6 +34,7 @@ class ArtifactAnalyzer:
         self.zip_handler = ZipHandler(upload_dir, extracted_dir)
         self.readme_parser = ReadmeParser()
         self.code_parser = CodeParser()
+        self.architecture_parser = ArchitectureParser()
 
     # ─── Public API ───────────────────────────────────────────────────────────
 
@@ -106,6 +108,18 @@ class ArtifactAnalyzer:
         all_entities.extend(code_data.entities)
         all_relationships.extend(code_data.relationships)
         all_metadata["code_stats"] = code_data.metadata
+
+        # ── Step 3: Architecture parser (Phase 4) ──────────────────────────
+        readme_techs = all_metadata.get("readme_technologies", [])
+        arch_data = self.architecture_parser.parse(
+            root_path=inventory.root_path,
+            project_id=inventory.project_id,
+            project_name=inventory.project_name,
+            readme_technologies=readme_techs,
+        )
+        all_entities.extend(arch_data.entities)
+        all_relationships.extend(arch_data.relationships)
+        all_metadata["arch_stats"] = arch_data.metadata
 
         # ── Step 3: Deduplicate entities by id ────────────────────────────
         seen_ids: set[str] = set()

@@ -15,13 +15,19 @@ from typing import Any
 
 # ─── Entity Types ─────────────────────────────────────────────────────────────
 class EntityType:
-    """All valid node types in Phase 1 of GraphTrace AI."""
+    """All valid node types in GraphTrace AI (Phase 1–4)."""
+    # Phase 1 — Basic Software Understanding
     REPOSITORY   = "REPOSITORY"
     FOLDER       = "FOLDER"
     FILE         = "FILE"
     CLASS        = "CLASS"
     FUNCTION     = "FUNCTION"
     README       = "README"
+    # Phase 4 — Architecture Intelligence (produced by ArchitectureParser)
+    SYSTEM       = "SYSTEM"
+    COMPONENT    = "COMPONENT"
+    SERVICE      = "SERVICE"
+    TECHNOLOGY   = "TECHNOLOGY"
 
 
 # ─── Relationship Types ───────────────────────────────────────────────────────

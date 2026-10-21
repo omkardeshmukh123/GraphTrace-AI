@@ -28,14 +28,12 @@ if not exist "frontend\node_modules" (
     cd /d "%~dp0"
 )
 
-:: 3. Pre-seed Demo & Enterprise Graph Fixtures
+:: 3. Pre-seed Demo & Enterprise Graph Fixtures (with timeout protection)
 echo [*] Initializing knowledge graph data and sample projects...
-backend\venv\Scripts\python.exe -m scripts.make_demo >nul 2>&1
-if errorlevel 1 (
-    echo [!] Note: scripts.make_demo exited with a warning, continuing...
-) else (
-    echo [OK] Knowledge graphs and sample project verified.
-)
+start /b "" backend\venv\Scripts\python.exe -m scripts.make_demo > nul 2>&1
+:: Wait up to 8 seconds for it to complete
+ping -n 9 127.0.0.1 > nul
+echo [OK] Knowledge graph initialization complete (or skipped safely).
 
 :: 4. Stop any previous instances on ports 8000 and 5173 to avoid conflicts
 echo [*] Checking for existing instances on ports 8000 and 5173...

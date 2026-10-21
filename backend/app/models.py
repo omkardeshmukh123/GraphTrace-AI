@@ -9,13 +9,18 @@ Identifier = Annotated[str, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,159}$"
 NodeType = Literal[
     "PROJECT", "FILE", "PACKAGE", "MODULE", "CLASS", "INTERFACE",
     "METHOD", "FUNCTION", "REQUIREMENT", "DOCUMENT", "TECHNOLOGY",
+    # Phase 4 — Architecture Intelligence
+    "SYSTEM", "COMPONENT", "SERVICE",
 ]
 RelationshipType = Literal[
     "CONTAINS", "IMPORTS", "CALLS", "EXTENDS", "IMPLEMENTS",
     "DEPENDS_ON", "IMPLEMENTED_BY", "DOCUMENTED_BY", "USES", "PART_OF",
+    # Phase 4 — Architecture Intelligence
+    "COMMUNICATES_WITH", "EXPOSES", "TESTED_BY",
 ]
 DEPENDENCY_TYPES = {"IMPORTS", "CALLS", "EXTENDS", "IMPLEMENTS", "DEPENDS_ON", "USES"}
 CODE_TYPES = {"FILE", "PACKAGE", "MODULE", "CLASS", "INTERFACE", "METHOD", "FUNCTION"}
+ARCH_TYPES = {"SYSTEM", "COMPONENT", "SERVICE"}
 
 
 class Contract(BaseModel):
