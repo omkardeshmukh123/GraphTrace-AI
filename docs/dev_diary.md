@@ -382,67 +382,307 @@ _Scope_: End-to-end integration testing, documentation consolidation, and backgr
 
 #### 3. Live Server Launch
 - Configured local environment `.env` with `GRAPHTRACE_STORE=local` and `GRAPHTRACE_PARSER=backend.app.parsers.pipeline:parse_project`.
-- Started **FastAPI backend** on `http://127.0.0.1:8000`.
+- Started **FastAPI backend** on `http://127.0.0.1:8000` (PID 20564).
 - Started **Vite dev server** on `http://localhost:5173`.
-- Verified Vite proxy: `GET http://localhost:5173/api/health` → `200 OK`.
+- Verified Vite proxy: `GET http://localhost:5173/api/health` &rarr; `200 OK`.
 - Seeded initial `Authentication demo` project for immediate exploration.
 
 ---
 
-## 📅 Session 5 — Enterprise Sample Project & Knowledge Graph Enrichment
-_Date_: 2026-09-12  
-_Scope_: Enriching `sample_project/` architecture and demo knowledge graph fixtures to showcase deep graph visualization, multi-cluster dependencies, and comprehensive requirement traceability.
+## Session 5 - Phase 4: Architecture Intelligence (M1)
+Date: 2026-10-21
+
+### Goals
+- Extract the architectural layer that bridges Requirements and Code
+- Identify frontend, backend, db, auth, API layers from static files
+- Feed architecture nodes into the shared ArtifactGraph contract
+
+### Work Done
+
+**New: backend/artifact_intelligence/architecture_parser.py**
+- COMPONENT entities from top-level folder names (frontend, backend, auth, db, etc.)
+- SERVICE entities from docker-compose.yml
+- TECHNOLOGY entities from requirements.txt, package.json, pyproject.toml
+- API Surface COMPONENT from route/controller file patterns
+- Relationships: PART_OF, CONTAINS, USES, COMMUNICATES_WITH, EXPOSES
+- Auto-detected comms pairs: frontend-backend, backend-db, auth-db
+
+**Extended backend/app/models.py**
+- New NodeType: SYSTEM, COMPONENT, SERVICE
+- New RelType: COMMUNICATES_WITH, EXPOSES, TESTED_BY
+- New ARCH_TYPES set for M2/M3 consumers
+
+**Updated analyzer.py + pipeline.py**
+- ArchitectureParser wired as Step 3 in _run_parsers()
+- All 4 arch entity types routed through M1 -> M3 type maps
+
+**Fixed launch.bat**
+- TCP timeout fixed: make_demo runs in background with 8s grace period
+
+### Verification
+- 13 arch entities, 17 arch relationships detected
+- Total: 522 nodes (SYSTEM:1, COMPONENT:5, TECHNOLOGY:7), 525 rels
+- Full pipeline passes: f96e8be pushed to main
+
+---
+
+## Session 6 — Phase 4: Architecture Intelligence (M2)
+_Date_: 2026-10-21  
+_Scope_: Member 2 extends Knowledge Graph Engine for Phase 4 architecture node and schema support
 
 ### 🎯 Goals
-- Expand `sample_project/` from a basic stub into a production-grade multi-tier e-commerce codebase.
-- Provide a rich Software Requirements Specification (`requirements.md`) with 8 formal requirements and explicit mappings (`mappings.json`).
-- Enrich knowledge graph demo fixtures (`scripts/make_demo.py`) with an 87-node, 142-relationship enterprise graph (`ecommerce-platform`).
-- Enable seamless 1-click switching and quick-load actions in the frontend UI.
-- Maintain 100% backward compatibility with all existing backend unit tests.
+- Add architectural nodes (SYSTEM, COMPONENT, SERVICE, TECHNOLOGY) and documentation/requirement nodes (REQUIREMENT, DOCUMENT) to Neo4j constants and schema.
+- Add architectural relationships (PART_OF, USES, COMMUNICATES_WITH, EXPOSES, TESTED_BY) to the graph writer whitelist and builder mappings.
+- Provide Cypher DDL generation, constraints, and indexes for architectural entities.
+- Implement architecture-level query methods in GraphQueryEngine for frontend visualization and dependency inspection.
+- Guarantee full backward compatibility with Phase 1–3 code and test suites.
 
 ### 🛠️ Work Done
 
-#### 1. Enterprise E-Commerce Sample Codebase (`sample_project/`)
-- Added real backend microservices and components in `sample_project/src/`:
-  - `controllers.py`: REST API handlers for `AuthController`, `OrderController`, `PaymentController`, `InventoryController`.
-  - `inventory_service.py`: `InventoryService` & `WarehouseClient` for stock checking, reservation, restocking.
-  - `payment_gateway.py`: `PaymentGateway`, `StripeClient`, `PayPalClient` with charge, refund, webhook verification.
-  - `notification_service.py`: `NotificationDispatcher`, `EmailClient`, `SMSNotifier` for multi-channel alerts.
-  - `audit_logger.py`: Cryptographically signed `AuditLogger` and `SecurityAuditor`.
-  - `api_gateway.py`: `APIGateway` with sliding-window `RateLimiter` and JWT authorization.
-  - `product_repository.py`: Catalog and warehouse stock count persistence.
-- Added client-side frontend modules in `sample_project/frontend/`:
-  - `api_client.js`: HTTP client with authorization header injection.
-  - `checkout_flow.js`: Multi-step checkout coordinator and `OrderSummary` calculator.
-  - `auth_context.js`: Session token storage and user authentication provider.
-- Added comprehensive unit tests in `sample_project/tests/`:
-  - `test_auth.py`, `test_orders.py`, `test_inventory.py`.
-- Added SRS requirements specification and mapping contracts:
-  - `requirements.md`: 8 requirements (`REQ-001` through `REQ-008`).
-  - `mappings.json`: Requirement-to-code mapping contract for automated traceability.
-  - `architecture.md`: ASCII system architecture diagram and component interaction flows.
-  - `README.md`: Fully updated architecture, modules, technologies, and setup guide.
+1. **Neo4j Constants & Enums (`backend/knowledge_graph/models.py`)**:
+   - Added NodeLabel.SYSTEM, COMPONENT, SERVICE, TECHNOLOGY, REQUIREMENT, DOCUMENT.
+   - Added RelType.COMMUNICATES_WITH, EXPOSES, TESTED_BY, PART_OF, USES.
+   - Built reverse mappings NodeLabel.FROM_ENTITY_TYPE and RelType.FROM_REL_TYPE to map M1/M3 types to Neo4j strings.
+   - Defined ARCH_NODE_TYPES = {System, Component, Service, Technology} for fast filtering.
 
-#### 2. Parser & Normalization Enhancements
-- **Control Flow Keyword Filtering**: Updated `backend/artifact_intelligence/code_parser.py` to ignore control flow constructs (`if`, `for`, `while`, `switch`, `catch`, etc.) so they are not mistreated as class methods.
-- **Cross-Platform Path Normalization**: Updated `backend/app/analysis.py` and `backend/artifact_intelligence/pipeline.py` to normalize path slashes (`/`), allowing manual mappings to resolve seamlessly across Windows and POSIX environments.
+2. **Schema & Constraints Setup (`backend/knowledge_graph/schema.py`)**:
+   - Created generate_schema_queries() exposing DDL queries for dry-runs, tests, and setup.
+   - Added unique constraints for all architecture nodes: FOR (n:System|Component|Service|Technology) REQUIRE n.id IS UNIQUE.
+   - Added lookup indexes on System.project_id, Component.name, Component.category, Service.name, Service.service_name, Technology.tech_name, and Technology.category.
 
-#### 3. Enterprise Knowledge Graph Generation (`scripts/make_demo.py`)
-- Maintained exact 12-node fixture in `demo_graph()` to preserve test isolation.
-- Added `sample_ecommerce_graph()` generating 87 nodes and 142 relationships:
-  - 8 `REQUIREMENT` nodes (100% mapped via `IMPLEMENTED_BY`).
-  - 3 `DOCUMENT` nodes (`README.md`, `architecture.md`, `requirements.md`).
-  - 17 `FILE` nodes, 24 `CLASS` nodes, 29 `METHOD` nodes, 2 `FUNCTION` nodes.
-  - Cross-tier call chains (`m-js-checkout` → `m-order-checkout` → `m-inv-reserve` → `m-prod-decrement`).
-  - Class dependency hierarchies (`OrderService` → `InventoryService`, `OrderService` → `PaymentGateway`).
-- Pre-seeded both `demo` and `ecommerce-platform` into `LocalGraphStore` under `.data/graphs/`.
+3. **M3 Plugin Graph Writer (`backend/knowledge_graph/graph_writer.py`)**:
+   - Updated _ALLOWED_REL_TYPES whitelist to include COMMUNICATES_WITH, EXPOSES, TESTED_BY, USES, PART_OF.
+   - Updated _EXTRA_LABELS to map SYSTEM -> System, COMPONENT -> Component, SERVICE -> Service, TECHNOLOGY -> Technology.
+   - Transactional safety: Writes batch UNWIND queries inside a single Neo4j transaction with rollback on failure.
 
-#### 4. Frontend UI Quick-Load
-- Enhanced `frontend/src/components/UploadModal.tsx` with a 1-click **"🚀 Explore CloudScale E-Commerce Sample"** action card to immediately load or switch to the rich sample platform.
+4. **Batch Graph Builder (`backend/knowledge_graph/builder.py`)**:
+   - Grouping logic _group_entities_by_label and _group_rels_by_type now seamlessly resolves all Phase 4 labels and types.
+   - Robust relative/package import fallback for `artifact_intelligence.models` and `connection.py` settings.
 
-#### 5. Verification & Test Results
-- `pytest backend/tests -v`: **81 passed, 12 skipped, 0 failures** (100% pass rate).
-- `pytest backend/tests/test_m1_parsers.py -v`: **25/25 passed**.
-- `npm run build`: Compiled with **0 errors**.
-- `npm run lint`: **0 errors**.
-- End-to-end ZIP analysis test: Analyzed `sample_project.zip` producing **169 nodes and 176 relationships** with all 8 requirements mapped.
+5. **Architecture Query Engine (`backend/knowledge_graph/queries.py`)**:
+   - Implemented get_architecture_view(project_id): Fetches sub-graph of architectural nodes and interconnecting edges with stats.
+   - Implemented get_components(project_id): Retrieves component list with folders, categories, exposed services, and technology badges.
+   - Implemented get_component_dependencies(component_id): Maps incoming/outgoing calls, exposed endpoints, and used technologies for drill-down.
+   - Implemented get_technology_stack(project_id): Groups project technologies by category (web-framework, database, library, etc.).
+
+6. **Automated Verification (`backend/tests/test_m2_phase4.py`)**:
+   - Added 15 comprehensive unit tests covering models, schema DDL, writer whitelist, builder grouping, and query engine methods.
+   - Verified 35/35 tests passing (`test_parser_plugin.py` + `test_m2_phase4.py`).
+
+### ✅ Verification
+- Test command: pytest backend/tests/test_parser_plugin.py backend/tests/test_m2_phase4.py -v
+- Result: **35 passed in 0.40s**.
+- Module imports & type mappings verified clean.
+
+---
+
+## Session 7 — Phase 4: Architecture Intelligence (M3)
+_Date_: 2026-10-21  
+_Scope_: Member 3 exposes Architecture REST API endpoints, response schemas, and graph traversals
+
+### 🎯 Goals
+- Extend the shared ArtifactGraph contract in `backend/app/models.py` with Phase 4 response schemas (`ArchitectureView`, `ComponentSummary`, `ComponentDependencyView`, `TechStackView`).
+- Re-export Phase 4 models via `backend/shared/contract.py` for cross-module accessibility.
+- Implement store-agnostic architectural traversals and aggregations in `backend/app/graph/queries.py`.
+- Expose four dedicated REST endpoints in `backend/app/api/routes.py` for M4 frontend consumption.
+- Verify comprehensive test coverage with unit and endpoint tests in `backend/tests/test_m3_phase4.py`.
+
+### 🛠️ Work Done
+
+1. **Shared Contract & Pydantic Models (`backend/app/models.py`, `backend/shared/contract.py`)**:
+   - Updated `ARCH_TYPES = {"SYSTEM", "COMPONENT", "SERVICE", "TECHNOLOGY"}`.
+   - Updated `DEPENDENCY_TYPES` to include `COMMUNICATES_WITH`.
+   - Defined `ARCH_REL_TYPES = {"PART_OF", "CONTAINS", "USES", "COMMUNICATES_WITH", "EXPOSES", "TESTED_BY"}`.
+   - Added `ArchitectureStats`: aggregate counts of systems, components, services, technologies, and cross-component communications.
+   - Added `ArchitectureView(GraphView)`: architectural subgraph with `stats`.
+   - Added `ComponentSummary`: layer categorization, folder path, technologies used, exposed services/APIs, and nested service/file counts.
+   - Added `ComponentDependencyView`: component node, outgoing/incoming calls, used technologies, and exposed services.
+   - Added `TechItem` & `TechStackView`: project technology stack grouped by category (web framework, database, libraries).
+
+2. **Graph Traversals & In-Memory Queries (`backend/app/graph/queries.py`)**:
+   - `architecture(graph)`: Filters for architecture nodes and inter-architectural relationships; computes aggregate metrics.
+   - `components(graph)`: Resolves all `COMPONENT` nodes, extracting outgoing `USES` to `TECHNOLOGY`, outgoing `EXPOSES`, and contained files/services.
+   - `component_dependencies(graph, component_id)`: Extracts incoming/outgoing `COMMUNICATES_WITH` and `CALLS`, used technologies, and exposed services with error handling (404/422).
+   - `tech_stack(graph)`: Groups `TECHNOLOGY` nodes by category and maps `used_by_components`.
+
+3. **REST API Endpoints (`backend/app/api/routes.py`)**:
+   - `GET /projects/{project_id}/architecture`: Returns `ArchitectureView` with stats.
+   - `GET /projects/{project_id}/components`: Returns `list[ComponentSummary]`.
+   - `GET /projects/{project_id}/components/{component_id}/dependencies`: Returns `ComponentDependencyView`.
+   - `GET /projects/{project_id}/technologies`: Returns `TechStackView`.
+
+4. **Automated Verification (`backend/tests/test_m3_phase4.py`)**:
+   - Added 5 end-to-end integration tests using `TestClient`.
+   - Validated node filtering, dependency directions, tech stack categorization, and 404/422 error handlers.
+   - Ran complete test suite: **73/73 tests passing in 2.31s** across M1, M2, and M3.
+
+### ✅ Verification
+- Test command: `pytest backend/tests/test_api.py backend/tests/test_parser_plugin.py backend/tests/test_m2_phase4.py backend/tests/test_m3_phase4.py -v`
+- Result: **73 passed in 2.31s**.
+
+---
+
+## 🔍 Pre-Phase 4 Frontend Audit & Comprehensive Verification
+_Date_: 2026-10-21  
+_Scope_: Thorough cross-member inspection of M1, M2, and M3 implementations, gap identification, resolution, and end-to-end integration testing.
+
+### 📋 Member-by-Member Verification Checklist
+
+#### 1. Member 1 (Artifact Intelligence)
+- [x] **Static Analysis Pipeline**: `ArtifactAnalyzer` runs `ReadmeParser`, `CodeParser`, and `ArchitectureParser`.
+- [x] **Folder Mapping Gap Resolved**: Added `"src"` mapping (`"Backend Services"`, category `application`). Previously, projects structured with `src/` were missing their primary backend component.
+- [x] **Code-Level Service Extraction**: Enhanced `architecture_parser.py` with `_parse_services()`. In addition to Docker-compose, it detects microservices and service classes from code (`*_service.py`, `*gateway*.py`, `*logger*.py`).
+- [x] **Component-to-Code Tree Linking**: Added `COMPONENT -[CONTAINS]-> FOLDER` relationships so components directly wire to the code hierarchy.
+- [x] **Sample Project Improvements**: Added `requirements.txt`, `docker-compose.yml`, and `frontend/package.json` to `sample_project/`, enabling complete architectural discovery.
+- [x] **Verification**: Direct analysis of `sample_project/` now extracts 4 components (`Backend Services`, `Frontend`, `API Surface`, `Test Suite`), 13 services, 11 technologies, and 10 inter-component/inter-service communications.
+
+#### 2. Member 2 (Knowledge Graph Engine)
+- [x] **Schema & Constants**: `models.py` defines all node labels (`SYSTEM`, `COMPONENT`, `SERVICE`, `TECHNOLOGY`, `REQUIREMENT`, `DOCUMENT`) and relationship types (`COMMUNICATES_WITH`, `EXPOSES`, `TESTED_BY`, `PART_OF`, `USES`).
+- [x] **Neo4j DDL Setup**: `schema.py` defines unique constraints and performance indexes for all architectural entities.
+- [x] **Writer Whitelist & Batch UNWIND**: `graph_writer.py` allows all 13 relationship types and maps extra PascalCase Neo4j labels within single transactions.
+- [x] **Standalone Server Routes**: Added Phase 4 endpoints (`/architecture`, `/components`, `/components/{id}/dependencies`, `/technologies`) to `backend/api/graph.py` so the standalone M1+M2 server (`port 8001`) mirrors production capabilities.
+- [x] **Verification**: All 15 unit tests in `test_m2_phase4.py` pass cleanly.
+
+#### 3. Member 3 (FastAPI Backend & Integration)
+- [x] **Shared Contract**: `models.py` defines `ArchitectureStats`, `ArchitectureView`, `ComponentSummary`, `ComponentDependencyView`, and `TechStackView`.
+- [x] **Graph Traversals**: `queries.py` provides store-agnostic algorithms for architecture extraction, component summaries, drill-down dependencies, and tech stack categorization.
+- [x] **REST API Routes**: `api/routes.py` exposes all 4 Phase 4 architecture endpoints on production server (`port 8000`).
+- [x] **Enterprise Fixture Update**: Updated `sample_ecommerce_graph()` in `scripts/make_demo.py` with full architectural layers and pre-seeded it directly into `LocalGraphStore`.
+- [x] **End-to-End Live Pipeline**: Upload of `sample_project.zip` via `POST /projects/analyze` produces 198 nodes and 226 relationships with 100% data integrity.
+
+### 🧪 Overall Test Results
+- Total tests executed across backend: **101 passed, 12 skipped (requiring live Neo4j daemon)**.
+- Execution time: **6.82s**.
+- Zero regressions. Git commit: `a55886a` pushed to `origin main`.
+
+---
+
+## 🎨 Session 8: Member 4 — Interactive Architecture Explorer & Visual Systems
+_Date_: 2026-10-21  
+_Author_: Member 4 (Frontend UI/UX Specialist)  
+_Scope_: Interactive Architecture Explorer, Component Diagrams, Microservice Traffic Canvas, and Dependency Drilldown Drawer.
+
+### 🎯 Key Accomplishments
+
+1. **Design Tokens & Node Aesthetics (`frontend/src/nodeColors.ts` & `frontend/src/index.css`)**:
+   - Added palette colors, glows, glyph icons, and canvas scale weights for Phase 4 entities:
+     - `SYSTEM`: Indigo (`#6366f1`, icon: `🌐`, size: 14)
+     - `COMPONENT`: Vibrant Purple (`#a855f7`, icon: `🧩`, size: 11)
+     - `SERVICE`: Cyan (`#06b6d4`, icon: `⚙️`, size: 8)
+     - `TECHNOLOGY`: Amber Gold (`#f59e0b`, icon: `🛠️`, size: 7)
+   - Added glassmorphic styling tokens for architecture cards, drawer backdrops, and animated directional particle links in `index.css`.
+
+2. **Typed API Contract Integration (`frontend/src/api.ts`)**:
+   - Declared TypeScript interfaces mirroring backend contracts: `ArchitectureStats`, `ArchitectureView`, `ComponentSummary`, `ComponentDependencyView`, `TechItem`, and `TechStackView`.
+   - Implemented client API methods:
+     - `api.getArchitecture(projectId)`: fetches top-level architecture graph and KPI summary.
+     - `api.getComponents(projectId)`: fetches all component metadata, folder paths, and exposed routes.
+     - `api.getComponentDependencies(projectId, componentId)`: fetches bidirectional call chains, technologies, and interfaces for a specific component.
+     - `api.getTechnologies(projectId)`: fetches all detected technologies grouped by category.
+
+3. **Architecture Intelligence Page (`frontend/src/pages/Architecture.tsx`)**:
+   - **KPI Metric Banner**: Real-time stats display for Systems, Components, Services, Technologies, and Inter-Service Calls.
+   - **Tab 1 — Topology Canvas**:
+     - 2D force-directed simulation with customized canvas rendering (glowing circular nodes, centered icon glyphs, contrast label badges).
+     - Link differentiation:
+       - `COMMUNICATES_WITH`: Sky cyan stroke with animated particle stream (`linkDirectionalParticles=4`).
+       - `CONTAINS`: Lavender boundary lines.
+       - `USES`: Amber dashed lines.
+       - `EXPOSES`: Emerald dotted lines.
+     - Interactive floating controls: category filter toggles (`SYSTEM`, `COMPONENT`, `SERVICE`, `TECHNOLOGY`), physics pause/resume, and auto-zoom to fit view.
+   - **Tab 2 — Component Catalog**:
+     - Category filter pills (`all`, `frontend`, `application`, `service`, `library`).
+     - Responsive glass cards showing folder locations, metrics (services, files, tech counts), exposed endpoints preview, and quick inspection trigger.
+   - **Tab 3 — Technology Stack Matrix**:
+     - Grouped by categories: `web-framework`, `ui-framework`, `database`, `cache`, `task-queue`, `build-tool`.
+     - Displays tech items, version tags, and badges of components utilizing each technology.
+   - **Component Dependency Drilldown Drawer**:
+     - Slide-in inspection panel displaying:
+       - **Outbound Service Calls (`calls`)**: Downstream targets with call direction indicator.
+       - **Inbound Callers (`called_by`)**: Upstream caller microservices.
+       - **Technologies Bound (`uses`)**: External databases, caches, and frameworks.
+       - **Exposed Endpoints (`exposes`)**: Public API routes and signatures.
+
+4. **Routing & Global Navigation**:
+   - **`AppShell.tsx`**: Updated topbar badge to `Phase 4` and added `🏛️ Architecture` navigation tab.
+   - **`App.tsx`**: Registered route `/projects/:projectId/architecture`.
+   - **`Dashboard.tsx`**: Integrated direct "🏛️ Architecture" button in page header and feature launcher card in the Architectural Exploration Hub.
+
+### ✅ Verification & Quality Assurance
+- **Frontend Build**: Ran `npm run build` (`tsc -b && vite build`) — compiled cleanly with **0 TypeScript errors** and **0 lint warnings** in 10.37s.
+- **Backend API Compatibility**: Tested live endpoints against running FastAPI backend (`/projects/ecommerce-platform/architecture`, `/components`, `/technologies`) with 100% status 200 responses.
+- **Autonomous Browser Testing**: Automated browser subagent executed full user journey on `http://localhost:5173/projects/ecommerce-platform/architecture`:
+  - Verified initial load of title, badge, and 5 KPI metric cards.
+  - Verified topology graph animation and particle links.
+  - Verified component catalog cards and category filtering.
+  - Verified clicking "Inspect Dependencies & Calls" opens the sliding drawer with all 4 dependency sections.
+  - Verified technology stack matrix categorized display.
+  - Confirmed 0 visual defects and 0 browser console errors.
+
+### 💎 Session 8 Addendum: Senior Frontend Polish, Microservice Radar Canvas & First-Class Clickable Entities
+_Date_: 2026-10-21  
+_Scope_: Complete overhaul of visual aesthetics, topology canvas rendering, clickable services, interactive interservice communication matrix, and React child sanitization.
+
+#### 🎯 Enhancements Delivered
+1. **First-Class Interactive Entities**:
+   - **Clickable KPI Cards**: Added interactive click triggers to all 5 KPI cards (`#kpi-systems`, `#kpi-components`, `#kpi-services`, `#kpi-tech`, `#kpi-calls`) with glowing active indicators and `Explore ↗` micro-links.
+   - **Dedicated Services Directory Tab (`#tab-services`)**: Added a full-featured microservices catalog displaying live status badges (`● ONLINE`), parent component tags, outbound service calls, and inbound callers.
+   - **Dedicated Inter-Service Traffic Tab (`#tab-calls`)**: Added an interactive communication flow matrix showing Source Client ──[HTTP / REST API]──► Target Destination cards with protocol badges and "Inspect Channel" actions.
+   - **Clickable Contained Services**: In the Component Catalog and Component Dependency Drawer, all contained microservices are now clickable interactive chips that directly launch the Service Inspector.
+
+2. **Cybernetic Radar Topology Canvas**:
+   - **Multi-Layer Cyber Grid**: Replaced plain background with an architectural grid (`36px` gridlines) and subtle radial illumination vignette.
+   - **Multi-Tier Visual Node Hierarchy**:
+     - `SYSTEM`: Planetary orbital hub with dashed rotating outer ring and rich radial gradient core.
+     - `COMPONENT`: Cyber squircle / rounded capsule with dual neon stroke and specular top highlight.
+     - `SERVICE`: Glowing cyan pod with live emerald green status beacon (`●`).
+     - `TECHNOLOGY`: Amber crystalline chip with circuit accents.
+     - **Connected Focus Mode**: Hovering or selecting any node/link illuminates the neighborhood while gracefully dimming unrelated entities.
+   - **Edge Aesthetics & Particle Streams**:
+     - `COMMUNICATES_WITH`: Curved arcs (`linkCurvature=0.2`), electric cyan gradient, directional arrows, and high-density animated particle streams (`linkDirectionalParticles=5`).
+     - `CONTAINS`: Soft lavender structural lines.
+     - `USES`: Amber dashed lines.
+     - `EXPOSES`: Emerald dotted lines.
+   - **Interactive Edge Clicks**: Clicking ANY edge opens the Inter-Service Communication Drawer with source/target cards and locate buttons.
+
+3. **Robustness & React Bug Fix**:
+   - Resolved D3 in-place relationship mutation (`link.source` and `link.target` becoming object references) by introducing `getEntityId()` sanitization across all lookups, keys, and text interpolations, preventing React child rendering crashes.
+   - Rebuilt frontend with `npm run build` (100% clean production bundle).
+
+---
+
+## Session 9 — 2026-10-21 (Architecture Extraction Generalization & Project Recovery)
+
+### 📌 Root Cause Investigation
+- **User Issue**: Project `API-Validator-main` (`3ad5487d2d504a00b9295fdc89feec78`) had 60 software entities and 59 relationships in other modules, but displayed **0 Systems, 0 Components, 0 Services, 0 Technologies, 0 Calls** in Architecture Intelligence Explorer.
+- **Root Cause 1 (Timestamp & Historical Schema)**: The project graph was generated on `2026-09-12` during Phase 1–3 development, before Phase 4 (`ArchitectureParser`) existed. The stored graph JSON contained only Phase 1–3 node types (`PROJECT`, `PACKAGE`, `FILE`, `CLASS`, `FUNCTION`, `DOCUMENT`).
+- **Root Cause 2 (Parser Inflexibility)**: `ArchitectureParser` was strictly tailored to hardcoded directory names (`backend`, `frontend`, `api`) and Python service files (`*_service.py`), failing to identify modern full-stack topologies (Supabase edge functions, serverless directories, client gateways, TypeScript/Vite/Tailwind configurations).
+
+### 🛠️ Fixes & Generalizations Delivered
+1. **Dynamic Architecture Synthesizer (`queries.ensure_architecture`)**:
+   - Added `ensure_architecture(graph)` to `backend/app/graph/queries.py`.
+   - If any project graph has 0 `COMPONENT` nodes (legacy imports or projects uploaded with non-standard structures), it dynamically synthesizes the architecture from existing package nodes, code files, and README metadata.
+   - Automatically identifies:
+     - **SYSTEM**: Top-level project hub with README description.
+     - **COMPONENTS**: `Frontend UI` (from Vite/Tailwind/React/src), `Supabase Cloud Platform` (from `supabase/functions`), `Integration Layer` (from `src/integrations`), `Security & Core Library` (from `src/lib`), and `Quality & Test Suite` (from `src/test`). Fallback ensures no project ever has 0 components.
+     - **SERVICES**: Discovers edge functions (`supabase/functions/*/index.ts`), API gateways (`client.ts`), and service classes.
+     - **TECHNOLOGIES**: Extracted from README badges, package definitions, and configuration files (`vite.config.ts`, `tailwind.config.ts`, `vitest.config.ts`, `tsconfig.json`).
+     - **COMMUNICATIONS**: Automatically connects client gateways to edge services, intra-service flows (e.g. `validate_key -> vault`), and inter-component dependencies.
+2. **Atomic Store Persistence**:
+   - Added `update(graph)` to `GraphStore` / `LocalGraphStore` / `Neo4jGraphStore` in `backend/app/graph/store.py`.
+   - Updated FastAPI routes in `backend/app/api/routes.py` (`/architecture`, `/components`, `/technologies`, `/dependencies`) to atomically persist newly synthesized architecture back to disk upon access.
+3. **Enhanced Static Architecture Parser (`ArchitectureParser`)**:
+   - Updated `backend/artifact_intelligence/architecture_parser.py`:
+     - Expanded `FOLDER_COMPONENT_MAP` with `supabase`, `functions`, `integrations`, `lib`, `components`, `hooks`, `pkg`, `modules`, `domain`, `controllers`, `routes`.
+     - Added context-aware `src` classification (Frontend UI vs. Application Core based on configs/subdirectories).
+     - Added edge function scanner (`**/functions/*/index.ts`), client gateway detection, and TypeScript service scanning.
+     - Added config file heuristics for Tailwind, Vite, Vitest, Supabase, and TypeScript.
+
+### 🧪 Verification
+- Backend verified:
+  - `GET /projects/3ad5487d2d504a00b9295fdc89feec78/architecture` returns 1 System, 5 Components, 4 Services, 10 Technologies, 8 Inter-service calls.
+  - Graph file `.data/graphs/graph-1bec166f59f447ccf75edab090327475d62518eaf975733dd822ea1e48fc480e.json` updated on disk to 80 nodes and 105 relationships.
+- Frontend visual verified via Chrome subagent:
+  - KPI counters show 1 SYSTEM, 5 COMPONENTS, 4 SERVICES, 10 TECHNOLOGIES, 8 INTER-SERVICE CALLS.
+  - Interactive Topology Radar canvas renders with live particle traffic and orbital nodes.
+  - Component Catalog, Services Directory, and Inter-Service Traffic tabs render correctly.
