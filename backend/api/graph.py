@@ -93,3 +93,45 @@ async def get_children(entity_id: str):
         "children": children,
         "count": len(children),
     }
+
+
+# ─── Phase 4 — Architecture Intelligence Endpoints ───────────────────────────
+
+@router.get("/projects/{project_id}/architecture", summary="Get architecture view (Phase 4)")
+async def get_architecture_view(project_id: str):
+    """
+    Returns the architectural view of the project:
+    SYSTEM, COMPONENT, SERVICE, and TECHNOLOGY nodes, their relationships, and aggregate stats.
+    """
+    return _query_engine.get_architecture_view(project_id)
+
+
+@router.get("/projects/{project_id}/components", summary="Get all components (Phase 4)")
+async def get_components(project_id: str):
+    """
+    Returns all architectural components with folder paths, categories,
+    and associated technologies.
+    """
+    return _query_engine.get_components(project_id)
+
+
+@router.get("/projects/{project_id}/components/{component_id:path}/dependencies", summary="Get component dependencies (Phase 4)")
+async def get_component_dependencies(project_id: str, component_id: str):
+    """
+    Drill-down dependency analysis for a single component:
+    outgoing/incoming calls, used technologies, and exposed services.
+    """
+    deps = _query_engine.get_component_dependencies(component_id)
+    if deps is None:
+        raise HTTPException(status_code=404, detail=f"Component {component_id!r} not found.")
+    return deps
+
+
+@router.get("/projects/{project_id}/technologies", summary="Get technology stack (Phase 4)")
+async def get_technology_stack(project_id: str):
+    """
+    Returns the project's technology stack categorized by layer (web framework,
+    database, utilities, etc.) and lists which components use each technology.
+    """
+    return _query_engine.get_technology_stack(project_id)
+

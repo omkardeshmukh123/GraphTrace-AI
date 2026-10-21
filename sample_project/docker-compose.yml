@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  api-gateway:
+    image: ecommerce/api-gateway:latest
+    ports:
+      - "8080:8080"
+  auth-service:
+    image: ecommerce/auth-service:latest
+    ports:
+      - "8081:8081"
+  order-service:
+    image: ecommerce/order-service:latest
+    ports:
+      - "8082:8082"
+  payment-gateway:
+    image: ecommerce/payment-gateway:latest
+    ports:
+      - "8083:8083"
+  postgres:
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432"
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"

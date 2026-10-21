@@ -63,6 +63,7 @@ FOLDER_COMPONENT_MAP: dict[str, dict[str, str]] = {
     "client":     {"name": "Client App",         "category": "presentation"},
     "web":        {"name": "Web App",            "category": "presentation"},
     "backend":    {"name": "Backend",            "category": "application"},
+    "src":        {"name": "Backend Services",   "category": "application"},
     "api":        {"name": "API Layer",          "category": "application"},
     "server":     {"name": "Server",             "category": "application"},
     "app":        {"name": "Application",        "category": "application"},
@@ -181,10 +182,10 @@ class ArchitectureParser:
         relationships.extend(folder_components["relationships"])
         component_ids: dict[str, str] = folder_components["component_ids"]
 
-        # ── 3. Docker-compose service extraction ─────────────────────────────
-        docker_services = self._parse_docker_compose(root_path, project_id, system_id)
-        entities.extend(docker_services["entities"])
-        relationships.extend(docker_services["relationships"])
+        # ── 3. Services extraction (Docker-compose + Code Services) ──────────
+        services_data = self._parse_services(root_path, project_id, system_id, component_ids)
+        entities.extend(services_data["entities"])
+        relationships.extend(services_data["relationships"])
 
         # ── 4. Technology detection ──────────────────────────────────────────
         all_techs: set[str] = set()
@@ -303,20 +304,33 @@ class ArchitectureParser:
                 type=ArchRelType.CONTAINS,
                 target=comp_id,
             ))
+            # COMPONENT -[CONTAINS]-> FOLDER (link to code tree)
+            relationships.append(Relationship(
+                source=comp_id,
+                type=ArchRelType.CONTAINS,
+                target=f"folder:{project_id}:{fname}",
+            ))
 
         # Detect inter-component COMMUNICATES_WITH from known patterns
-        # e.g. "frontend" communicates with "backend"/"api"
+        # e.g. "frontend" communicates with "backend"/"src"/"api"
         COMM_PAIRS = [
             ("frontend", "backend"),
+            ("frontend", "src"),
             ("frontend", "api"),
             ("client", "api"),
             ("client", "backend"),
+            ("client", "src"),
+            ("web", "backend"),
+            ("web", "src"),
             ("backend", "db"),
             ("backend", "database"),
+            ("src", "db"),
+            ("src", "database"),
             ("api", "db"),
             ("service", "db"),
             ("auth", "db"),
             ("backend", "workers"),
+            ("src", "workers"),
         ]
         for src_folder, tgt_folder in COMM_PAIRS:
             if src_folder in component_ids and tgt_folder in component_ids:
@@ -332,7 +346,104 @@ class ArchitectureParser:
             "component_ids": component_ids,
         }
 
-    # ─── Docker-compose service extraction ────────────────────────────────────
+    # ─── Service extraction (Docker-compose + Code Services) ──────────────────
+
+    def _parse_services(
+        self,
+        root_path: Path,
+        project_id: str,
+        system_id: str,
+        component_ids: dict[str, str],
+    ) -> dict:
+        """Extract runtime services from docker-compose or code service files."""
+        entities: list[Entity] = []
+        relationships: list[Relationship] = []
+        service_ids: dict[str, str] = {}
+
+        # 1. First attempt docker-compose
+        docker_res = self._parse_docker_compose(root_path, project_id, system_id)
+        entities.extend(docker_res["entities"])
+        relationships.extend(docker_res["relationships"])
+        for e in docker_res["entities"]:
+            service_ids[e.properties.get("service_name", e.name.lower())] = e.id
+
+        # 2. Also detect code-level services (e.g. auth_service.py, order_service.py, api_gateway.py)
+        service_patterns = ["**/*_service.py", "**/*_gateway.py", "**/*_logger.py"]
+        found_service_files: list[Path] = []
+        for pat in service_patterns:
+            try:
+                for match in root_path.glob(pat):
+                    if match.is_file() and not match.name.startswith("test_"):
+                        found_service_files.append(match)
+            except Exception:
+                pass
+
+        for sfile in found_service_files:
+            base = sfile.stem  # e.g. "auth_service", "order_service"
+            clean_name = base.replace("_", " ").title().replace(" ", "")
+            svc_key = base.lower()
+
+            if svc_key in service_ids:
+                continue
+
+            svc_id = f"service:{project_id}:{svc_key}"
+            service_ids[svc_key] = svc_id
+
+            rel_path = str(sfile.relative_to(root_path)).replace("\\", "/")
+            svc_entity = Entity(
+                id=svc_id,
+                type=ArchEntityType.SERVICE,
+                name=clean_name,
+                properties={
+                    "service_name": svc_key,
+                    "source_file": rel_path,
+                },
+            )
+            entities.append(svc_entity)
+
+            # SERVICE -[PART_OF]-> SYSTEM
+            relationships.append(Relationship(
+                source=svc_id,
+                type=ArchRelType.PART_OF,
+                target=system_id,
+            ))
+
+            # Connect parent component -[CONTAINS]-> SERVICE & -[EXPOSES]-> SERVICE
+            for folder_key, comp_id in component_ids.items():
+                if rel_path.startswith(folder_key + "/") or rel_path.startswith(folder_key + "\\"):
+                    relationships.append(Relationship(
+                        source=comp_id,
+                        type=ArchRelType.CONTAINS,
+                        target=svc_id,
+                    ))
+                    relationships.append(Relationship(
+                        source=comp_id,
+                        type=ArchRelType.EXPOSES,
+                        target=svc_id,
+                    ))
+                    break
+
+        # 3. Known inter-service communication patterns
+        SVC_COMMS = [
+            ("api_gateway", "auth_service"),
+            ("api_gateway", "order_service"),
+            ("api_gateway", "inventory_service"),
+            ("api_gateway", "payment_gateway"),
+            ("order_service", "payment_gateway"),
+            ("order_service", "inventory_service"),
+            ("order_service", "notification_service"),
+            ("order_service", "audit_logger"),
+            ("auth_service", "audit_logger"),
+        ]
+        for src_k, tgt_k in SVC_COMMS:
+            if src_k in service_ids and tgt_k in service_ids:
+                relationships.append(Relationship(
+                    source=service_ids[src_k],
+                    type=ArchRelType.COMMUNICATES_WITH,
+                    target=service_ids[tgt_k],
+                ))
+
+        return {"entities": entities, "relationships": relationships}
 
     def _parse_docker_compose(
         self,
@@ -549,17 +660,17 @@ class ArchitectureParser:
             "vue":     ["frontend", "ui", "client"],
             "angular": ["frontend", "ui", "client"],
             "vite":    ["frontend", "ui", "client"],
-            "fastapi": ["backend", "api", "app", "server"],
-            "flask":   ["backend", "api", "app"],
-            "django":  ["backend", "api", "app"],
-            "neo4j":   ["backend", "db", "database", "core"],
-            "redis":   ["backend", "workers", "db"],
-            "postgresql": ["db", "database", "backend"],
-            "mongodb": ["db", "database", "backend"],
-            "langchain": ["backend", "core", "ai", "ml"],
-            "openai":  ["backend", "core", "ai", "ml"],
-            "faiss":   ["backend", "core", "ai", "ml"],
-            "chroma":  ["backend", "core", "ai", "ml"],
+            "fastapi": ["backend", "api", "app", "server", "src"],
+            "flask":   ["backend", "api", "app", "src"],
+            "django":  ["backend", "api", "app", "src"],
+            "neo4j":   ["backend", "db", "database", "core", "src"],
+            "redis":   ["backend", "workers", "db", "src"],
+            "postgresql": ["db", "database", "backend", "src"],
+            "mongodb": ["db", "database", "backend", "src"],
+            "langchain": ["backend", "core", "ai", "ml", "src"],
+            "openai":  ["backend", "core", "ai", "ml", "src"],
+            "faiss":   ["backend", "core", "ai", "ml", "src"],
+            "chroma":  ["backend", "core", "ai", "ml", "src"],
             "docker":  [None],
             "kubernetes": [None],
         }
@@ -620,6 +731,7 @@ class ArchitectureParser:
         api_file_patterns = [
             "**/routes/*.py", "**/routers/*.py", "**/api/*.py",
             "**/views.py", "**/endpoints.py", "**/controllers/*.py",
+            "**/controllers.py", "**/api_gateway.py",
             "**/routes/*.ts", "**/routes/*.js", "**/controllers/*.ts",
         ]
 
@@ -628,6 +740,8 @@ class ArchitectureParser:
             or component_ids.get("api")
             or component_ids.get("server")
             or component_ids.get("app")
+            or component_ids.get("src")
+            or component_ids.get("core")
         )
 
         if not backend_comp_id:
