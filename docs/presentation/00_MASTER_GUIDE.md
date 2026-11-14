@@ -2,104 +2,110 @@
 
 > **Event**: Group Project Demonstration + Viva  
 > **Duration**: 10–15 minutes total  
-> **Team**: 4 Members  
-> **Format**: Live demo + Q&A
+> **Team**: Member 1 (Artifact Intelligence) · Member 2 (Knowledge Graph Engine) · Member 3 (FastAPI Backend) · Member 4 (Frontend & Visualization)  
+> **Current Status**: Phase 4 — Architecture Intelligence ✅ COMPLETE
 
 ---
 
-## ⏱️ Time Budget (13 minutes total)
+## ⏱️ Time Budget — 13 Minutes
 
-| Slot | Who | What | Time |
-|------|-----|------|------|
-| 0:00 – 1:30 | **Member 1** | Opening — What problem we solved & the idea | 1.5 min |
-| 1:30 – 4:30 | **Member 1** | Live Demo Part 1 — Upload + Analyze a project | 3 min |
-| 4:30 – 7:00 | **Member 2** | Graph Explorer walkthrough + architecture insight | 2.5 min |
-| 7:00 – 9:30 | **Member 3** | Backend Intelligence — how the brain works | 2.5 min |
-| 9:30 – 11:30 | **Member 4** | Frontend & Architecture Explorer visual walkthrough | 2 min |
-| 11:30 – 13:00 | **All** | Future goals & wrap-up | 1.5 min |
-
----
-
-## 🗣️ Speaking Handoff Script
-
-Use these exact phrases to smoothly hand off between members:
-
-- **M1 → M2**: *"Now that the project is analyzed and the graph is built, let me hand it over to [M2 name] who'll show you what the system actually knows."*
-- **M2 → M3**: *"The visualization is powered by a smart backend — [M3 name] will walk you through the intelligence behind it."*
-- **M3 → M4**: *"And all of this is wrapped in a polished interface — [M4 name] will show you the architecture explorer."*
-- **M4 → Close**: *"Before we wrap up, let's talk about where this is headed."*
+| Slot | Speaker | Section | Duration |
+|------|---------|---------|----------|
+| 0:00–1:30 | **Member 1** | Opening — The problem, the idea, our solution | 1.5 min |
+| 1:30–4:00 | **Member 1** | Live Demo Part 1 — Upload, Analyze, Graph appears | 2.5 min |
+| 4:00–6:30 | **Member 2** | Graph Explorer + Graph Database deep dive | 2.5 min |
+| 6:30–9:00 | **Member 3** | Backend API, integration story, traceability engine | 2.5 min |
+| 9:00–11:30 | **Member 4** | Architecture Explorer — the full visual showcase | 2.5 min |
+| 11:30–13:00 | **All** | Phases completed, what's next, closing | 1.5 min |
 
 ---
 
-## 🖥️ Demo Setup Checklist (Do BEFORE presentation)
+## 🔊 Smooth Handoff Lines (memorize these)
 
-- [ ] Start the backend server: open terminal in project root → run `launch.bat`
-- [ ] Open browser at `http://localhost:5173`
-- [ ] Delete any existing test projects using the **Reset (🗑️)** button — start fresh
-- [ ] Have your demo ZIP file ready (use `sample_project.zip` from the `backend/` folder)
-- [ ] Zoom browser to 110% for readability
-- [ ] Close all other tabs and notifications
-
----
-
-## 🔥 One-Line Project Pitch (memorize this)
-
-> *"GraphTrace AI lets you drop in any codebase as a ZIP and instantly see its architecture — components, services, technologies, and how they connect — through an interactive visual graph."*
+| From → To | Exact line to say |
+|-----------|-------------------|
+| **M1 → M2** | *"The analysis is done and the graph is built. Let me hand it to [M2] who will show you what the system actually knows and how it's stored."* |
+| **M2 → M3** | *"So that's the data layer. But what ties everything together is the backend intelligence — [M3] will walk you through how it all connects."* |
+| **M3 → M4** | *"And all of this intelligence is wrapped in a polished interface that [M4] built. Let me hand it over."* |
+| **M4 → Close** | *"That's the full system. Let's talk about where we are and where we're heading."* |
 
 ---
 
-## 🧠 Key Facts to Remember
+## 🖥️ Pre-Presentation Setup Checklist
 
-| Topic | What to Say |
-|-------|-------------|
-| What is it? | An AI-powered code analysis and visualization tool |
-| What does it do? | Reads a project ZIP → extracts structure → shows interactive graph |
-| Tech stack | Python (FastAPI), React, Neo4j (graph database) |
-| Total tests | 101 tests passing ✅ |
-| Phase completed | Phase 1 (Core + Architecture Intelligence) |
-| Lines of code | ~5,000+ across backend + frontend |
+> Do this **before** anyone enters the room.
 
----
-
-## ❓ Common Viva Questions & Suggested Answers
-
-**Q: Why did you use a graph database?**  
-A: "Code is naturally a graph — files contain classes, classes call each other, services depend on services. A graph database like Neo4j makes these relationships first-class citizens you can query and traverse."
-
-**Q: What problem does this solve?**  
-A: "When you join a new project or audit someone else's code, understanding the structure takes days. GraphTrace AI does it in seconds and shows you a visual map."
-
-**Q: How does the architecture detection work?**  
-A: "Member 1's parser reads folder names, config files, and code patterns to identify components and services. Member 3 exposes this via API, and Member 4 renders it as an interactive canvas."
-
-**Q: What's next for the project?**  
-A: "Phase 2 targets AI-powered semantic search — asking questions about the codebase in plain English. Phase 3 adds requirement traceability."
-
-**Q: Did you use any AI/ML?**  
-A: "Phase 1 uses smart static analysis (rule-based). The AI layer is planned for Phase 2 — semantic embeddings and natural language querying."
-
-**Q: How do you handle large projects?**  
-A: "The parser skips non-essential folders like `node_modules` and `venv`. Batch graph writes are used for performance. Scaling is a Phase 3 concern."
+- [ ] Run `launch.bat` from the project root — wait for both servers to confirm ready
+- [ ] Open browser at `http://localhost:5173` — confirm the home screen loads
+- [ ] Delete existing test projects using the **🗑️ Reset** button — start completely fresh
+- [ ] Keep `sample_project.zip` on the Desktop for quick drag-and-drop
+- [ ] Also keep the ecommerce-platform demo project data in `.data/` as a backup
+- [ ] Set browser zoom to **110%** so text is readable from the back
+- [ ] Turn off all browser notifications and OS notifications
+- [ ] Close all other applications
+- [ ] Have the backend docs tab at `http://localhost:8000/docs` ready but minimized
 
 ---
 
-## ✅ Each Member's "One Thing to Nail"
+## 🔥 Project Pitch — One Sentence (all 4 members should know this)
 
-| Member | The one thing |
-|--------|--------------|
-| M1 | The live upload → analyze → graph moment must work. Practice it 3x. |
-| M2 | Explain the graph in plain English. "These dots are files, these lines are relationships." |
-| M3 | Don't go too deep into API endpoints. Show confidence, stay high-level. |
-| M4 | Let the visuals speak. Click around — the UI is your strongest argument. |
+> *"GraphTrace AI takes any codebase as a ZIP file and instantly produces an interactive visual map of its architecture — components, services, technologies, dependencies, and how they all connect — stored as a knowledge graph."*
 
 ---
 
-## 🚨 Contingency Plans
+## 📌 Key Project Numbers (cite these in viva with confidence)
 
-| Problem | Fix |
-|---------|-----|
-| Backend not starting | Run `launch.bat` again; check port 8000 is free |
-| Frontend blank page | Hard-refresh (Ctrl+Shift+R); check port 5173 |
-| Upload fails | Use the pre-loaded demo project (ecommerce-platform already in the system) |
-| Graph doesn't render | Click "Reset Zoom" on the graph page |
-| Neo4j errors | We use LOCAL storage mode — Neo4j is optional, ignore those errors |
+| Metric | Value |
+|--------|-------|
+| Phases completed | Phase 1 ✅ Phase 2 ✅ Phase 3 ✅ **Phase 4 ✅** |
+| Backend tests passing | **101 tests, 0 failures** |
+| Phase 1 test count | 81 passed (25 M1 + 20 M1→M3 + 33 API + 3 Neo4j adapter) |
+| Phase 4 additional tests | 20 new tests (M2 Phase 4 + M3 Phase 4) |
+| API endpoints | 13 REST endpoints |
+| Node types supported | PROJECT, FILE, PACKAGE, CLASS, FUNCTION, METHOD, REQUIREMENT, DOCUMENT, SYSTEM, COMPONENT, SERVICE, TECHNOLOGY |
+| Relationship types | 15+ (CONTAINS, CALLS, IMPORTS, DEPENDS_ON, COMMUNICATES_WITH, EXPOSES, USES, PART_OF, TESTED_BY, …) |
+| Frontend pages | Home, Dashboard, Graph Explorer, Traceability, Dependencies, Ask AI, Architecture Explorer |
+| Languages parsed | Python, JavaScript, TypeScript |
+
+---
+
+## ❓ Universal Viva Questions (every member should know these answers)
+
+**Q: What is a knowledge graph?**  
+A: *"A knowledge graph is a database where data is stored as nodes (entities) and edges (relationships) rather than tables. It's ideal for code because code is naturally a network — files import other files, functions call functions, services depend on services."*
+
+**Q: Why not just use GitHub's built-in tools?**  
+A: *"GitHub shows you code but it doesn't understand architecture. GraphTrace AI reads the entire structure and shows you a visual map of how every piece connects — including which requirements map to which code, and which services talk to each other."*
+
+**Q: What's the most technically impressive part of this project?**  
+A: *"Phase 4 — the architecture synthesizer. If a project was uploaded before our architecture parser existed, the system dynamically reconstructs the architecture from whatever data is already stored. It never shows an empty result."*
+
+**Q: How did 4 members avoid breaking each other's code?**  
+A: *"We defined a shared data contract — `ArtifactGraph` in `models.py` — on day one. Every member codes to this interface. If anyone breaks the contract, 101 tests fail immediately. That's our safety net."*
+
+**Q: What problem does this actually solve in the real world?**  
+A: *"When a new developer joins a team, understanding an unfamiliar codebase takes days. With GraphTrace AI, you upload it and get an architecture map in seconds. Onboarding becomes visual and instant."*
+
+---
+
+## 🚨 Contingency Table
+
+| Problem | Immediate fix |
+|---------|--------------|
+| Backend not responding | Re-run `launch.bat`; check port 8000 in Task Manager |
+| Frontend blank page | Hard-refresh `Ctrl+Shift+R`; check port 5173 |
+| Upload fails mid-demo | *"Let me show you using our pre-loaded project"* → navigate to ecommerce-platform |
+| Architecture shows 0 nodes | Click "Architecture" tab again — the synthesizer runs on first access |
+| Graph explorer too slow | Use the node type filters to reduce visible nodes |
+| Neo4j errors in logs | These are safe to ignore — we run in local storage mode |
+
+---
+
+## ✅ Each Member's Single Most Important Thing
+
+| Member | The one thing to nail |
+|--------|----------------------|
+| **M1** | The upload → analyze moment must visually complete on screen. Practice 3×. |
+| **M2** | Explain graph visually: *"dots are entities, lines are relationships."* Don't use jargon. |
+| **M3** | Show the `/docs` swagger page briefly — it makes the API tangible without explaining all endpoints. |
+| **M4** | Let the topology canvas render fully before talking. The visuals are the argument. |
